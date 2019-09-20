@@ -1,0 +1,11 @@
+func add2(x, y)
+2->x
+3->y
+end
+
+for x,1,10
+69->a
+
+add2(3, 4) -> m
+
+end
