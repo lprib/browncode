@@ -11,7 +11,8 @@ pub enum IntermediateLine<'a> {
     JumpTrue(Expr<'a>, Cow<'a, str>),
     JumpFalse(Expr<'a>, Cow<'a, str>),
     FunDeclaration(&'a str, Vec<&'a str>),
-    FunReturn
+    FunReturn,
+    Expr(Expr<'a>),
 }
 
 pub fn to_intermediate_repr<'a> (ast: Block<'a>) -> IntermediateBlock<'a> {
@@ -76,7 +77,8 @@ fn convert_line<'a> (line: Line<'a>, counter: &mut u32) -> IntermediateBlock<'a>
             block.push(IntermediateLine::FunDeclaration(name, args));
             block.extend(convert_block(body, counter));
             block.push(IntermediateLine::FunReturn);
-        }
+        },
+        Line::Expr(e) => block.push(IntermediateLine::Expr(e))
     }
     block
 }
@@ -98,7 +100,8 @@ impl fmt::Debug for IntermediateLine<'_> {
             IntermediateLine::JumpFalse(e, l) => write!(f, "if not {{{:?}}} goto {}", e, l),
             IntermediateLine::JumpTrue(e, l) => write!(f, "if {{{:?}}} goto {}", e, l),
             IntermediateLine::FunDeclaration(n, a) => write!(f, "func {}{:?}", n, a),
-            IntermediateLine::FunReturn => write!(f, "return")
+            IntermediateLine::FunReturn => write!(f, "return"),
+            IntermediateLine::Expr(e) => write!(f, "{:?}", e),
         }
     }
 }

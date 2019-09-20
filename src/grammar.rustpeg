@@ -49,7 +49,7 @@ arithmetic -> Expr<'input> = #infix<padded_expression> {
         x "!=" y { Expr::Neq(Box::new(x), Box::new(y)) }
 }
 
-line -> Line<'input> = fun_declaration / label / for_loop / assign / while_loop / if_else / if_block / goto
+line -> Line<'input> = fun_declaration / label / for_loop / assign / while_loop / if_else / if_block / goto / expr_line
 
 assign -> Line<'input> = e:expression _ "->" _ i:ident
     { Line::Assign(i, e) }
@@ -80,3 +80,6 @@ fun_arg -> &'input str = _ i:ident _
 
 fun_declaration -> Line<'input> = "func" _ i:ident _ "(" args:(fun_arg ++ ",") ")" __ l:lines __ "end"
     { Line::FunDeclaration(i, args, l) }
+
+expr_line -> Line<'input> = e:fun_call
+    { Line::Expr(e) }
