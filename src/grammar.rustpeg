@@ -114,3 +114,7 @@ data_line -> DataDef<'input> = data_zeros / data_bytes_hex / data_byte_dec / dat
 
 pub data_segment -> DataBlock<'input> = block:(data_line ++ __)
     { block }
+
+
+pub program -> (DataBlock<'input>, Block<'input>) = ".DATA" __ data:data_segment __ ".CODE"  __ l:lines
+    { (data, l) }

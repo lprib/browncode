@@ -10,3 +10,4 @@ peg = { version = "0.5.7" }
 
 [dependencies]
 peg = "0.5.7"
+lazy_static = "1.4.0"

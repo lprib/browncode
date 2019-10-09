@@ -6,6 +6,8 @@ use std::fmt;
 pub type IntermediateBlock<'a> = Vec<IntermediateLine<'a>>;
 pub type IntermediateBlockSlice<'a> = [IntermediateLine<'a>];
 
+pub type DataSegment<'a> = (Vec<u8>, HashMap<&'a str, usize>);
+
 pub enum IntermediateLine<'a> {
     Assign(&'a str, Expr<'a>),
     Goto(Cow<'a, str>),
@@ -96,7 +98,7 @@ fn convert_line<'a>(line: Line<'a>, counter: &mut u32) -> IntermediateBlock<'a> 
 }
 
 fn next_label_name<'a, 'b>(counter: &'a mut u32) -> Cow<'b, str> {
-    //todo maybe pass in description for debug puposes (eg. for_start / for_exit)
+    //TODO maybe pass in description for debug puposes (eg. for_start / for_exit)
     let label_name = format!("$internal_{}", counter);
     *counter += 1;
     Cow::from(label_name)
@@ -117,7 +119,9 @@ impl fmt::Debug for IntermediateLine<'_> {
     }
 }
 
-pub fn convert_data_segment(data: DataBlock<'_>) -> (Vec<u8>, HashMap<&'_ str, usize>) {
+//flatten data block so all of the data is in a vec
+//and the labels are in a hashmap mapping them to the index of data they're pointing to
+pub fn convert_data_segment(data: DataBlock<'_>) -> DataSegment<'_> {
     let mut map = HashMap::new();
     let mut data_vec = Vec::new();
 

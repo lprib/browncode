@@ -11,17 +11,19 @@ fn main() {
     // println!("{:#?}", grammar::lines("x*3+1->x"));
 
     let pro = include_str!("program.brown");
-    // let block = grammar::lines(pro).unwrap();
-    // println!("{:#?}", block);
+    let (data, code) = grammar::program(pro).unwrap();
+    let code = intermediate_repr::to_intermediate_repr(code);
+    let (data, data_label_table) = intermediate_repr::convert_data_segment(data);
+    let label_table = interpreter::build_label_table(&code);
 
-    // let block = intermediate_repr::to_intermediate_repr(block);
-    // println!("{:#?}", block);
+    // println!("{:#?}", code);
 
-    // let mut interpreter = interpreter::Interpreter::new(block);
-    // interpreter.execute();
+    let program = interpreter::Program {
+        code,
+        data,
+        data_label_table,
+        label_table
+    };
 
-    let b = grammar::data_segment(pro).unwrap();
-    println!("{:#?}", b);
-    let (x, y) = intermediate_repr::convert_data_segment(b);
-    println!("{:#?}\n{:#?}", x, y);
+    interpreter::execute(&program);
 }

@@ -1,6 +1,13 @@
+.DATA
+
 hello:
 123
 [0000]
 
 sprite:
 [FEA48592]
+
+.CODE
+for x, 0, 10
+print(x)
+end
