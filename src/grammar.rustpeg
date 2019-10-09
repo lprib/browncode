@@ -2,12 +2,12 @@ use crate::ast::*;
 
 _ = #quiet<[ \t]*>
 
-//any whitespace, must include at least one newline
+//any whitespace, but must include at least one newline
 __ = [ \t]* "\n" [ \t\n]*
 
-pub expression -> Expr<'input> = fun_call / number_literal / deref / var / var_address
+pub expression_atom -> Expr<'input> = fun_call / var / number_literal / deref / var_address / parens
 
-pub ident -> &'input str = i:$([a-zA-Z0-9]+)
+pub ident -> &'input str = i:$([a-zA-Z][a-zA-Z0-9]*)
     { i }
 
 decimal -> Expr<'input> = n:$([0-9]+)
@@ -21,7 +21,7 @@ binary -> Expr<'input> = "0b" n:$([0-1]+)
 
 number_literal -> Expr<'input> = binary / hex / decimal
 
-deref -> Expr<'input> = "[" _ e:expression _ "]" 
+deref -> Expr<'input> = "{" _ e:expression _ "}" 
     { Expr::Deref(Box::new(e)) }
 
 var -> Expr<'input> = i:ident
@@ -30,13 +30,19 @@ var -> Expr<'input> = i:ident
 var_address -> Expr<'input> = "&" _ i:ident
     { Expr::VarAddress(i) }
 
-padded_expression -> Expr<'input> = _ e:expression _
+parens -> Expr<'input> = "(" _ e:expression _ ")"
     { e }
 
-fun_call -> Expr<'input> = i:ident _ "(" args:(padded_expression ++ ",") ")"
+padded_expression_atom -> Expr<'input> = _ e:expression_atom _
+    { e }
+
+fun_call_arg -> Expr<'input> = _ e:expression _
+    { e }
+
+fun_call -> Expr<'input> = i:ident _ "(" args:(fun_call_arg ++ ",") ")"
     { Expr::FunCall(i, args) }
 
-arithmetic -> Expr<'input> = #infix<padded_expression> {
+pub expression -> Expr<'input> = #infix<padded_expression_atom> {
     #L  x "+" y { Expr::Add(Box::new(x), Box::new(y)) }
         x "-" y { Expr::Sub(Box::new(x), Box::new(y)) }
     #L  x "*" y { Expr::Mul(Box::new(x), Box::new(y)) }
@@ -49,7 +55,7 @@ arithmetic -> Expr<'input> = #infix<padded_expression> {
         x "!=" y { Expr::Neq(Box::new(x), Box::new(y)) }
 }
 
-line -> Line<'input> = fun_declaration / label / for_loop / assign / while_loop / if_else / if_block / goto / expr_line
+line -> Line<'input> = assign / fun_declaration / label / for_loop / while_loop / if_else / if_block / goto / expr_line
 
 assign -> Line<'input> = e:expression _ "->" _ i:ident
     { Line::Assign(i, e) }
@@ -83,3 +89,28 @@ fun_declaration -> Line<'input> = "func" _ i:ident _ "(" args:(fun_arg ++ ",") "
 
 expr_line -> Line<'input> = e:fun_call
     { Line::Expr(e) }
+
+
+// DATA SEGMENT
+data_zeros -> DataDef<'input> = "zeros" _ n:$([0-9]+)
+    {
+        let n = n.parse::<u32>().unwrap();
+        DataDef::Bytes(vec![0; n as usize])
+    }
+
+data_byte_hex -> u8 = n:$([a-fA-f0-9]*<2>)
+    { u8::from_str_radix(n, 16).unwrap() }
+
+data_bytes_hex -> DataDef<'input> = "[" _ bytes:(data_byte_hex ** _ ) _ "]"
+    { DataDef::Bytes(bytes) }
+
+data_byte_dec -> DataDef<'input> = n:$([0-9]+)
+    { DataDef::Bytes(vec![n.parse::<u8>().unwrap(); 1]) }
+
+data_label -> DataDef<'input> = n:ident _ ":"
+    { DataDef::Label(n) }
+
+data_line -> DataDef<'input> = data_zeros / data_bytes_hex / data_byte_dec / data_label
+
+pub data_segment -> DataBlock<'input> = block:(data_line ++ __)
+    { block }

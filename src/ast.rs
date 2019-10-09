@@ -1,5 +1,7 @@
 pub type Block<'a> = Vec<Line<'a>>;
 
+pub type DataBlock<'a> = Vec<DataDef<'a>>;
+
 type E<'a> = Box<Expr<'a>>;
 
 #[derive(Debug)]
@@ -36,4 +38,10 @@ pub enum Line<'a> {
     //ambiguity arises (eg. 'end' getting parsed as Expr::Var("end") instead
     //of the end of a block)
     Expr(Expr<'a>)
+}
+
+#[derive(Debug)]
+pub enum DataDef<'a> {
+    Label(&'a str),
+    Bytes(Vec<u8>)
 }

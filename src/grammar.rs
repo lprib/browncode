@@ -1,7 +1,5 @@
 include!(concat!(env!("OUT_DIR"), "/grammar.rs"));
 
-static mut LABEL_UID_COUNTER: u32 = 0;
-
 #[allow(unused_imports)]
 mod test {
     use super::*;
