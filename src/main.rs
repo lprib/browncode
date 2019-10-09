@@ -6,6 +6,7 @@ mod grammar;
 mod ast;
 mod intermediate_repr;
 mod interpreter;
+mod util;
 
 fn main() {
     // println!("{:#?}", grammar::lines("x*3+1->x"));
@@ -16,7 +17,7 @@ fn main() {
     let (data, data_label_table) = intermediate_repr::convert_data_segment(data);
     let label_table = interpreter::build_label_table(&code);
 
-    // println!("{:#?}", code);
+    println!("{:#?}", code);
 
     let program = interpreter::Program {
         code,

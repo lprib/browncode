@@ -48,7 +48,7 @@ fn convert_line<'a>(line: Line<'a>, counter: &mut u32) -> IntermediateBlock<'a> 
                 block.push(IntermediateLine::Goto(exit_label.clone()));
                 block.push(IntermediateLine::Label(else_label));
                 block.extend(convert_block(else_block, counter));
-                block.push(IntermediateLine::Goto(exit_label));
+                block.push(IntermediateLine::Label(exit_label));
             } else {
                 //no else block
                 block.push(IntermediateLine::Label(else_label));

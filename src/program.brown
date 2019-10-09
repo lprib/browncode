@@ -1,13 +1,26 @@
 .DATA
+a:
+69
+420
 
-hello:
-123
-[0000]
+str:
+" "
+0
 
-sprite:
-[FEA48592]
+fizz:
+"fizz"
+0
+
+buzz:
+"buzz"
+0
 
 .CODE
-for x, 0, 10
-print(x)
+for i, 0, 10
+    mul2(i) -> x
+end
+
+func mul2(a0)
+    a0 * 2 -> ans
+    println(ans)
 end

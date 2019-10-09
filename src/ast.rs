@@ -14,7 +14,7 @@ pub enum Expr<'a> {
     Sub(E<'a>, E<'a>),
     Mul(E<'a>, E<'a>),
     Div(E<'a>, E<'a>),
-    //todo mod
+    Mod(E<'a>, E<'a>),
     Lt(E<'a>, E<'a>),
     Gt(E<'a>, E<'a>),
     Leq(E<'a>, E<'a>),
