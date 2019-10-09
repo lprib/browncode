@@ -1,14 +1,11 @@
-use lazy_static::lazy_static;
 use super::InterpreterState;
+use lazy_static::lazy_static;
 
 type IntrinsicFn = fn(Vec<u32>, &mut InterpreterState) -> u32;
 
 lazy_static! {
-    static ref INTRINSICS: &'static [(&'static str, IntrinsicFn)] = &[
-        ("println", println),
-        ("print", print),
-        ("puts", puts)
-    ];
+    static ref INTRINSICS: &'static [(&'static str, IntrinsicFn)] =
+        &[("println", println), ("print", print), ("puts", puts)];
 }
 
 pub fn get_intrinsic(name: &str) -> Option<&IntrinsicFn> {

@@ -1,4 +1,6 @@
 .DATA
+", "
+0
 a:
 69
 420
@@ -12,15 +14,14 @@ fizz:
 0
 
 buzz:
-"buzz"
+" =-= "
 0
 
 .CODE
 for i, 0, 10
-    mul2(i) -> x
+    println(sqr(i))
 end
 
-func mul2(a0)
-    a0 * 2 -> ans
-    println(ans)
+func sqr(a0)
+    a0 * a0 -> ans
 end

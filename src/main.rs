@@ -1,4 +1,3 @@
-
 #[allow(clippy::all)]
 #[allow(warnings)]
 mod grammar;
@@ -23,7 +22,7 @@ fn main() {
         code,
         data,
         data_label_table,
-        label_table
+        label_table,
     };
 
     interpreter::execute(&program);

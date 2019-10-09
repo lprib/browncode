@@ -14,6 +14,5 @@ mod test {
     fn test_deref() {
         println!("{:?}", expression("32").unwrap());
         println!("{:?}", expression("[32]").unwrap());
-
     }
 }

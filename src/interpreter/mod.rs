@@ -1,7 +1,5 @@
 use crate::ast::Expr;
-use crate::intermediate_repr::{
-    DataSegment, IntermediateBlock, IntermediateBlockSlice, IntermediateLine,
-};
+use crate::intermediate_repr::{IntermediateBlock, IntermediateBlockSlice, IntermediateLine};
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -19,7 +17,6 @@ pub struct InterpreterState<'a> {
     data: Vec<u8>,
     var_table: HashMap<&'a str, usize>,
     instr_index: usize,
-    return_stack: Vec<usize>,
 }
 
 pub fn execute<'a>(program: &Program<'a>) {
@@ -27,7 +24,6 @@ pub fn execute<'a>(program: &Program<'a>) {
         data: program.data.clone(),
         var_table: program.data_label_table.clone(),
         instr_index: 0,
-        return_stack: Vec::new(),
     };
 
     loop {
@@ -50,12 +46,12 @@ impl<'a> InterpreterState<'a> {
                 set_u32(addr, &mut self.data, n);
             }
 
-            Expr(e) => {
-                self.evaluate_expr(e, program);
+            Expr(expr) => {
+                self.evaluate_expr(expr, program);
             }
 
-            JumpFalse(e, label) => {
-                let n = self.evaluate_expr(e, program);
+            JumpFalse(expr, label) => {
+                let n = self.evaluate_expr(expr, program);
                 if n == 0 {
                     self.instr_index = program.label_table[label];
                 }
@@ -69,61 +65,64 @@ impl<'a> InterpreterState<'a> {
                     .get(name)
                     .unwrap_or_else(|| panic!("no label {}", name));
             }
-
-            _ => unimplemented!(),
         };
         self.instr_index += 1;
     }
 
-    fn evaluate_expr(&mut self, expr: &Expr<'a>, p: &Program<'a>) -> u32 {
+    fn evaluate_expr(&mut self, expr: &Expr<'a>, program: &Program<'a>) -> u32 {
         use Expr::*;
         // println!("{:?}", expr);
         match expr {
             Literal(n) => *n,
-            Add(l, r) => self.bin_op(&l, &r, p, |a, b| a + b),
-            Sub(l, r) => self.bin_op(&l, &r, p, |a, b| a - b),
-            Mul(l, r) => self.bin_op(&l, &r, p, |a, b| a * b),
-            Div(l, r) => self.bin_op(&l, &r, p, |a, b| a / b),
-            Mod(l, r) => self.bin_op(&l, &r, p, |a, b| a % b),
-            Lt(l, r) => self.bin_bool_op(&l, &r, p, |a, b| a < b),
-            Gt(l, r) => self.bin_bool_op(&l, &r, p, |a, b| a > b),
-            Leq(l, r) => self.bin_bool_op(&l, &r, p, |a, b| a <= b),
-            Geq(l, r) => self.bin_bool_op(&l, &r, p, |a, b| a >= b),
-            Neq(l, r) => self.bin_bool_op(&l, &r, p, |a, b| a != b),
-            Eq(l, r) => self.bin_bool_op(&l, &r, p, |a, b| a == b),
+            Add(l, r) => self.bin_op(&l, &r, program, |a, b| a + b),
+            Sub(l, r) => self.bin_op(&l, &r, program, |a, b| a - b),
+            Mul(l, r) => self.bin_op(&l, &r, program, |a, b| a * b),
+            Div(l, r) => self.bin_op(&l, &r, program, |a, b| a / b),
+            Mod(l, r) => self.bin_op(&l, &r, program, |a, b| a % b),
+            Lt(l, r) => self.bin_bool_op(&l, &r, program, |a, b| a < b),
+            Gt(l, r) => self.bin_bool_op(&l, &r, program, |a, b| a > b),
+            Leq(l, r) => self.bin_bool_op(&l, &r, program, |a, b| a <= b),
+            Geq(l, r) => self.bin_bool_op(&l, &r, program, |a, b| a >= b),
+            Neq(l, r) => self.bin_bool_op(&l, &r, program, |a, b| a != b),
+            Eq(l, r) => self.bin_bool_op(&l, &r, program, |a, b| a == b),
             FunCall(name, args) => {
                 let args = args
                     .iter()
-                    .map(|e| self.evaluate_expr(e, p))
+                    .map(|e| self.evaluate_expr(e, program))
                     .collect::<Vec<u32>>();
                 if let Some(f) = intrinsics::get_intrinsic(name) {
                     f(args, self)
                 } else {
-                    self.evaluate_funcall(name, &args, p)
+                    self.evaluate_funcall(name, &args, program)
                 }
             }
             Var(name) => get_var(name, &mut self.var_table, &mut self.data),
-            Deref(e) => get_u32(self.evaluate_expr(e, p) as usize, &self.data),
+            Deref(e) => get_u32(self.evaluate_expr(e, program) as usize, &self.data),
             VarAddress(name) => get_var_address(name, &mut self.var_table, &mut self.data) as u32,
-            _ => unimplemented!(),
         }
     }
 
-    fn bin_op<F>(&mut self, l: &Expr<'a>, r: &Expr<'a>, p: &Program<'a>, op: F) -> u32
+    fn bin_op<F>(&mut self, left: &Expr<'a>, right: &Expr<'a>, program: &Program<'a>, op: F) -> u32
     where
         F: Fn(u32, u32) -> u32,
     {
-        let l = self.evaluate_expr(l, p);
-        let r = self.evaluate_expr(r, p);
+        let l = self.evaluate_expr(left, program);
+        let r = self.evaluate_expr(right, program);
         op(l, r)
     }
 
-    fn bin_bool_op<F>(&mut self, l: &Expr<'a>, r: &Expr<'a>, p: &Program<'a>, op: F) -> u32
+    fn bin_bool_op<F>(
+        &mut self,
+        left: &Expr<'a>,
+        right: &Expr<'a>,
+        program: &Program<'a>,
+        op: F,
+    ) -> u32
     where
         F: Fn(u32, u32) -> bool,
     {
-        let l = self.evaluate_expr(l, p);
-        let r = self.evaluate_expr(r, p);
+        let l = self.evaluate_expr(left, program);
+        let r = self.evaluate_expr(right, program);
 
         if op(l, r) {
             1
@@ -132,12 +131,12 @@ impl<'a> InterpreterState<'a> {
         }
     }
 
-    fn evaluate_funcall(&mut self, name: &str, args: &Vec<u32>, p: &Program<'a>) -> u32 {
+    fn evaluate_funcall(&mut self, name: &str, args: &[u32], program: &Program<'a>) -> u32 {
         let return_isp = self.instr_index;
         //jump to function
-        self.instr_index = p.label_table[name];
+        self.instr_index = program.label_table[name];
 
-        if let IntermediateLine::FunDeclaration(_, params) = &p.code[self.instr_index] {
+        if let IntermediateLine::FunDeclaration(_, params) = &program.code[self.instr_index] {
             for (i, param) in params.iter().enumerate() {
                 let addr = get_var_address(param, &mut self.var_table, &mut self.data);
                 if let Some(arg) = args.get(i) {
@@ -149,10 +148,10 @@ impl<'a> InterpreterState<'a> {
             }
 
             loop {
-                if let IntermediateLine::FunReturn = p.code[self.instr_index] {
+                if let IntermediateLine::FunReturn = program.code[self.instr_index] {
                     break;
                 }
-                self.execute_line(p);
+                self.execute_line(program);
             }
             self.instr_index = return_isp;
             get_var("ans", &mut self.var_table, &mut self.data)
@@ -199,7 +198,7 @@ fn get_var<'a>(name: &'a str, var_table: &mut HashMap<&'a str, usize>, data: &mu
 }
 
 //todo better (unsafe) way?
-fn get_u32(index: usize, vec: &Vec<u8>) -> u32 {
+fn get_u32(index: usize, vec: &[u8]) -> u32 {
     u32::from(vec[index]) << 24
         | u32::from(vec[index + 1]) << 16
         | u32::from(vec[index + 2]) << 8

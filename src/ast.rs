@@ -21,7 +21,7 @@ pub enum Expr<'a> {
     Geq(E<'a>, E<'a>),
     Eq(E<'a>, E<'a>),
     Neq(E<'a>, E<'a>),
-    FunCall(&'a str, Vec<Expr<'a>>)
+    FunCall(&'a str, Vec<Expr<'a>>),
 }
 
 #[derive(Debug)]
@@ -33,15 +33,14 @@ pub enum Line<'a> {
     Goto(&'a str),
     Label(&'a str),
     FunDeclaration(&'a str, Vec<&'a str>, Block<'a>),
-    
     //at the moment, the expr can only be a Expr::FunCall, otherwise
     //ambiguity arises (eg. 'end' getting parsed as Expr::Var("end") instead
     //of the end of a block)
-    Expr(Expr<'a>)
+    Expr(Expr<'a>),
 }
 
 #[derive(Debug)]
 pub enum DataDef<'a> {
     Label(&'a str),
-    Bytes(Vec<u8>)
+    Bytes(Vec<u8>),
 }

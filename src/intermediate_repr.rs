@@ -13,7 +13,6 @@ pub enum IntermediateLine<'a> {
     Goto(Cow<'a, str>),
     Label(Cow<'a, str>),
     //TODO is this needed?
-    JumpTrue(Expr<'a>, Cow<'a, str>),
     JumpFalse(Expr<'a>, Cow<'a, str>),
     FunDeclaration(Cow<'a, str>, Vec<&'a str>),
     FunReturn,
@@ -111,7 +110,6 @@ impl fmt::Debug for IntermediateLine<'_> {
             IntermediateLine::Goto(l) => write!(f, "goto {}", l),
             IntermediateLine::Label(l) => write!(f, "{}:", l),
             IntermediateLine::JumpFalse(e, l) => write!(f, "if not {:?}: goto {}", e, l),
-            IntermediateLine::JumpTrue(e, l) => write!(f, "if {:?}: goto {}", e, l),
             IntermediateLine::FunDeclaration(n, a) => write!(f, "func {}{:?}", n, a),
             IntermediateLine::FunReturn => write!(f, "return"),
             IntermediateLine::Expr(e) => write!(f, "{:?}", e),
