@@ -1,27 +1,17 @@
 .DATA
-", "
-0
-a:
-69
-420
-
 str:
-" "
+"abcdefghijklmnopqrstuvwxyz"
 0
 
-fizz:
-"fizz"
-0
-
-buzz:
-" =-= "
-0
+ne_w:
+zeros 40
 
 .CODE
-for i, 0, 10
-    println(sqr(i))
+0 -> i
+while b[&str + i] != 0
+    b[&str + i] + 1 -> b[&ne_w + i]
+    i+1->i
 end
 
-func sqr(a0)
-    a0 * a0 -> ans
-end
+puts(&ne_w)
+println()

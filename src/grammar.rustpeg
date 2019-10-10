@@ -6,9 +6,9 @@ _ = #quiet<[ \t]*>
 //any whitespace, but must include at least one newline
 __ = #quiet<[ \t]* "\n" [ \t\n]*>
 
-pub expression_atom -> Expr<'input> = fun_call / var / number_literal / deref / var_address / parens
+pub expression_atom -> Expr<'input> = deref_byte / fun_call / var / number_literal / deref / var_address / parens
 
-pub ident -> &'input str = i:$([a-zA-Z][a-zA-Z0-9]*)
+pub ident -> &'input str = i:$([a-zA-Z_][a-zA-Z0-9_]*)
     { i }
 
 decimal -> Expr<'input> = n:$([0-9]+)
@@ -22,8 +22,11 @@ binary -> Expr<'input> = "0b" n:$([0-1]+)
 
 number_literal -> Expr<'input> = binary / hex / decimal
 
-deref -> Expr<'input> = "{" _ e:expression _ "}" 
+deref -> Expr<'input> = "[" _ e:expression _ "]" 
     { Expr::Deref(Box::new(e)) }
+
+deref_byte -> Expr<'input> = "b[" _ e:expression _ "]"
+    { Expr::DerefByte(Box::new(e)) }
 
 var -> Expr<'input> = i:ident
     { Expr::Var(i) }
@@ -45,23 +48,40 @@ fun_call -> Expr<'input> = i:ident _ "(" args:(fun_call_arg ** ",") ")"
 
 
 pub expression -> Expr<'input> = #infix<padded_expression_atom> {
+    #L  x "|" y { Expr::BitOr(Box::new(x), Box::new(y)) }
+    #L  x "^" y { Expr::BitXor(Box::new(x), Box::new(y)) }
+    #L  x "&" y { Expr::BitAnd(Box::new(x), Box::new(y)) }
+    #L  x "=" y { Expr::Eq(Box::new(x), Box::new(y)) }
+        x "!=" y { Expr::Neq(Box::new(x), Box::new(y)) }
+    #L  x "<" y { Expr::Lt(Box::new(x), Box::new(y)) }
+        x ">" y { Expr::Gt(Box::new(x), Box::new(y)) }
+        x "<=" y { Expr::Leq(Box::new(x), Box::new(y)) }
+        x ">=" y { Expr::Geq(Box::new(x), Box::new(y)) }
+    #L  x "<<" y { Expr::Shl(Box::new(x), Box::new(y)) }
+        x ">>" y { Expr::Shr(Box::new(x), Box::new(y)) }
     #L  x "+" y { Expr::Add(Box::new(x), Box::new(y)) }
         x "-" y { Expr::Sub(Box::new(x), Box::new(y)) }
     #L  x "*" y { Expr::Mul(Box::new(x), Box::new(y)) }
         x "/" y { Expr::Div(Box::new(x), Box::new(y)) }
         x "%" y { Expr::Mod(Box::new(x), Box::new(y)) }
-    #L  x "<" y { Expr::Lt(Box::new(x), Box::new(y)) }
-        x ">" y { Expr::Gt(Box::new(x), Box::new(y)) }
-        x "<=" y { Expr::Leq(Box::new(x), Box::new(y)) }
-        x ">=" y { Expr::Geq(Box::new(x), Box::new(y)) }
-        x "=" y { Expr::Eq(Box::new(x), Box::new(y)) }
-        x "!=" y { Expr::Neq(Box::new(x), Box::new(y)) }
+    
 }
 
 line -> Line<'input> = assign / fun_declaration / label / for_loop / while_loop / if_else / if_block / goto / expr_line
 
-assign -> Line<'input> = e:expression _ "->" _ i:ident
-    { Line::Assign(i, e) }
+assign_target_var -> AssignTarget<'input> = i:ident
+    { AssignTarget::Var(i) }
+
+assign_target_addr -> AssignTarget<'input> = "[" _ e:expression _ "]"
+    { AssignTarget::Addr(e) }
+
+assign_target_byte_addr -> AssignTarget<'input> = "b[" _ e:expression _ "]"
+    { AssignTarget::ByteAddr(e) }
+
+assign_target -> AssignTarget<'input> = assign_target_byte_addr / assign_target_var / assign_target_addr
+
+assign -> Line<'input> = e:expression _ "->" _ t:assign_target
+    { Line::Assign(t, e) }
 
 pub lines -> Block<'input> = l:(line ** __)
     { l }
@@ -104,7 +124,7 @@ data_zeros -> DataDef<'input> = "zeros" _ n:$([0-9]+)
 data_byte_hex -> u8 = n:$([a-fA-f0-9]*<2>)
     { u8::from_str_radix(n, 16).unwrap() }
 
-data_bytes_hex -> DataDef<'input> = "[" _ bytes:(data_byte_hex ** _ ) _ "]"
+data_bytes_hex -> DataDef<'input> = "{" _ bytes:(data_byte_hex ** _ ) _ "}"
     { DataDef::Bytes(bytes) }
 
 data_byte_dec -> DataDef<'input> = "b" n:$([0-9]+)

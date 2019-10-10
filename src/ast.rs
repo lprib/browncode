@@ -8,6 +8,7 @@ type E<'a> = Box<Expr<'a>>;
 pub enum Expr<'a> {
     Literal(u32),
     Deref(E<'a>),
+    DerefByte(E<'a>),
     Var(&'a str),
     VarAddress(&'a str),
     Add(E<'a>, E<'a>),
@@ -21,12 +22,17 @@ pub enum Expr<'a> {
     Geq(E<'a>, E<'a>),
     Eq(E<'a>, E<'a>),
     Neq(E<'a>, E<'a>),
+    BitAnd(E<'a>, E<'a>),
+    BitOr(E<'a>, E<'a>),
+    BitXor(E<'a>, E<'a>),
+    Shl(E<'a>, E<'a>),
+    Shr(E<'a>, E<'a>),
     FunCall(&'a str, Vec<Expr<'a>>),
 }
 
 #[derive(Debug)]
 pub enum Line<'a> {
-    Assign(&'a str, Expr<'a>),
+    Assign(AssignTarget<'a>, Expr<'a>),
     For(&'a str, Expr<'a>, Expr<'a>, Block<'a>),
     While(Expr<'a>, Block<'a>),
     If(Expr<'a>, Block<'a>, Option<Block<'a>>),
@@ -37,6 +43,13 @@ pub enum Line<'a> {
     //ambiguity arises (eg. 'end' getting parsed as Expr::Var("end") instead
     //of the end of a block)
     Expr(Expr<'a>),
+}
+
+#[derive(Debug)]
+pub enum AssignTarget<'a> {
+    Var(&'a str),
+    Addr(Expr<'a>),
+    ByteAddr(Expr<'a>)
 }
 
 #[derive(Debug)]

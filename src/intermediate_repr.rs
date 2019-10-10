@@ -1,4 +1,4 @@
-use crate::ast::{Block, DataBlock, DataDef, Expr, Line};
+use crate::ast::{Block, DataBlock, DataDef, Expr, Line, AssignTarget};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
@@ -9,7 +9,7 @@ pub type IntermediateBlockSlice<'a> = [IntermediateLine<'a>];
 pub type DataSegment<'a> = (Vec<u8>, HashMap<&'a str, usize>);
 
 pub enum IntermediateLine<'a> {
-    Assign(&'a str, Expr<'a>),
+    Assign(AssignTarget<'a>, Expr<'a>),
     Goto(Cow<'a, str>),
     Label(Cow<'a, str>),
     //TODO is this needed?
@@ -34,7 +34,7 @@ fn convert_block<'a>(block: Block<'a>, counter: &mut u32) -> IntermediateBlock<'
 fn convert_line<'a>(line: Line<'a>, counter: &mut u32) -> IntermediateBlock<'a> {
     let mut block = Vec::new();
     match line {
-        Line::Assign(l, e) => block.push(IntermediateLine::Assign(l, e)),
+        Line::Assign(t, e) => block.push(IntermediateLine::Assign(t, e)),
         Line::Goto(l) => block.push(IntermediateLine::Goto(Cow::from(l))),
         Line::Label(l) => block.push(IntermediateLine::Label(Cow::from(l))),
         Line::If(test_expr, then_block, else_block) => {
@@ -58,7 +58,7 @@ fn convert_line<'a>(line: Line<'a>, counter: &mut u32) -> IntermediateBlock<'a> 
             let exit_label = next_label_name(counter);
             //TODO macro for multiple pushes (does it exist?)
             block.extend(vec![
-                IntermediateLine::Assign(variable, start),
+                IntermediateLine::Assign(AssignTarget::Var(variable), start),
                 IntermediateLine::Label(start_label.clone()),
                 // jumptrue (var <= end) exit_label
                 IntermediateLine::JumpFalse(
@@ -70,7 +70,7 @@ fn convert_line<'a>(line: Line<'a>, counter: &mut u32) -> IntermediateBlock<'a> 
             block.extend(vec![
                 // var = var + 1
                 IntermediateLine::Assign(
-                    variable,
+                    AssignTarget::Var(variable),
                     Expr::Add(Box::new(Expr::Var(variable)), Box::new(Expr::Literal(1))),
                 ),
                 IntermediateLine::Goto(start_label),
@@ -106,7 +106,7 @@ fn next_label_name<'a, 'b>(counter: &'a mut u32) -> Cow<'b, str> {
 impl fmt::Debug for IntermediateLine<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            IntermediateLine::Assign(s, e) => write!(f, "{:?} -> {}", e, s),
+            IntermediateLine::Assign(t, e) => write!(f, "{:?} -> {:?}", e, t),
             IntermediateLine::Goto(l) => write!(f, "goto {}", l),
             IntermediateLine::Label(l) => write!(f, "{}:", l),
             IntermediateLine::JumpFalse(e, l) => write!(f, "if not {:?}: goto {}", e, l),

@@ -1,4 +1,4 @@
-use crate::ast::Expr;
+use crate::ast::{AssignTarget, Expr};
 use crate::intermediate_repr::{IntermediateBlock, IntermediateBlockSlice, IntermediateLine};
 
 use std::borrow::Cow;
@@ -40,10 +40,23 @@ impl<'a> InterpreterState<'a> {
         // println!("{:?}", line);
         use IntermediateLine::*;
         match line {
-            Assign(name, expr) => {
+            Assign(target, expr) => {
                 let n = self.evaluate_expr(expr, program);
-                let addr = get_var_address(name, &mut self.var_table, &mut self.data);
-                set_u32(addr, &mut self.data, n);
+                match target {
+                    AssignTarget::Var(name) => {
+                        let addr = get_var_address(name, &mut self.var_table, &mut self.data);
+                        set_u32(addr, &mut self.data, n);
+                    }
+                    AssignTarget::Addr(addr) => {
+                        let addr = self.evaluate_expr(addr, program);
+                        set_u32(addr as usize, &mut self.data, n);
+                    }
+                    AssignTarget::ByteAddr(addr) => {
+                        let addr = self.evaluate_expr(addr, program);
+                        //truncate u32 expression into a byte, and store it into a single byte
+                        self.data[addr as usize] = n as u8;
+                    }
+                }
             }
 
             Expr(expr) => {
@@ -79,6 +92,11 @@ impl<'a> InterpreterState<'a> {
             Mul(l, r) => self.bin_op(&l, &r, program, |a, b| a * b),
             Div(l, r) => self.bin_op(&l, &r, program, |a, b| a / b),
             Mod(l, r) => self.bin_op(&l, &r, program, |a, b| a % b),
+            BitAnd(l, r) => self.bin_op(&l, &r, program, |a, b| a & b),
+            BitOr(l, r) => self.bin_op(&l, &r, program, |a, b| a | b),
+            BitXor(l, r) => self.bin_op(&l, &r, program, |a, b| a ^ b),
+            Shl(l, r) => self.bin_op(&l, &r, program, |a, b| a << b),
+            Shr(l, r) => self.bin_op(&l, &r, program, |a, b| a >> b),
             Lt(l, r) => self.bin_bool_op(&l, &r, program, |a, b| a < b),
             Gt(l, r) => self.bin_bool_op(&l, &r, program, |a, b| a > b),
             Leq(l, r) => self.bin_bool_op(&l, &r, program, |a, b| a <= b),
@@ -96,8 +114,12 @@ impl<'a> InterpreterState<'a> {
                     self.evaluate_funcall(name, &args, program)
                 }
             }
-            Var(name) => get_var(name, &mut self.var_table, &mut self.data),
+            Var(name) => get_var_value(name, &mut self.var_table, &mut self.data),
             Deref(e) => get_u32(self.evaluate_expr(e, program) as usize, &self.data),
+            DerefByte(e) => {
+                let n = self.evaluate_expr(e, program) as usize;
+                u32::from(self.data[n])
+            }
             VarAddress(name) => get_var_address(name, &mut self.var_table, &mut self.data) as u32,
         }
     }
@@ -132,19 +154,15 @@ impl<'a> InterpreterState<'a> {
     }
 
     fn evaluate_funcall(&mut self, name: &str, args: &[u32], program: &Program<'a>) -> u32 {
-        let return_isp = self.instr_index;
+        let return_instr_index = self.instr_index;
         //jump to function
         self.instr_index = program.label_table[name];
 
         if let IntermediateLine::FunDeclaration(_, params) = &program.code[self.instr_index] {
             for (i, param) in params.iter().enumerate() {
                 let addr = get_var_address(param, &mut self.var_table, &mut self.data);
-                if let Some(arg) = args.get(i) {
-                    set_u32(addr, &mut self.data, *arg);
-                } else {
-                    //if not enough arguments are passed to the function, fill them with 0
-                    set_u32(addr, &mut self.data, 0);
-                }
+                let arg_value = args.get(i).copied().unwrap_or(0u32);
+                set_u32(addr, &mut self.data, arg_value);
             }
 
             loop {
@@ -153,8 +171,8 @@ impl<'a> InterpreterState<'a> {
                 }
                 self.execute_line(program);
             }
-            self.instr_index = return_isp;
-            get_var("ans", &mut self.var_table, &mut self.data)
+            self.instr_index = return_instr_index;
+            get_var_value("ans", &mut self.var_table, &mut self.data)
         } else {
             panic!("{} is not a valid function", name);
         }
@@ -174,6 +192,7 @@ pub fn build_label_table<'a>(program: &IntermediateBlockSlice<'a>) -> HashMap<Co
     map
 }
 
+// returns address of var from name. Allocates var is not already.
 fn get_var_address<'a>(
     name: &'a str,
     var_table: &mut HashMap<&'a str, usize>,
@@ -192,7 +211,11 @@ fn get_var_address<'a>(
     }
 }
 
-fn get_var<'a>(name: &'a str, var_table: &mut HashMap<&'a str, usize>, data: &mut Vec<u8>) -> u32 {
+fn get_var_value<'a>(
+    name: &'a str,
+    var_table: &mut HashMap<&'a str, usize>,
+    data: &mut Vec<u8>,
+) -> u32 {
     let addr = get_var_address(name, var_table, data);
     get_u32(addr, data)
 }

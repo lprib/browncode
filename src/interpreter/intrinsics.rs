@@ -1,11 +1,16 @@
 use super::InterpreterState;
 use lazy_static::lazy_static;
+use std::char;
 
 type IntrinsicFn = fn(Vec<u32>, &mut InterpreterState) -> u32;
 
 lazy_static! {
-    static ref INTRINSICS: &'static [(&'static str, IntrinsicFn)] =
-        &[("println", println), ("print", print), ("puts", puts)];
+    static ref INTRINSICS: &'static [(&'static str, IntrinsicFn)] = &[
+        ("println", println),
+        ("print", print),
+        ("puts", puts),
+        ("putc", putc)
+    ];
 }
 
 pub fn get_intrinsic(name: &str) -> Option<&IntrinsicFn> {
@@ -42,5 +47,10 @@ fn puts(args: Vec<u32>, state: &mut InterpreterState) -> u32 {
         print!("{}", state.data[i] as char);
         i += 1;
     }
+    0
+}
+
+fn putc(args: Vec<u32>, _: &mut InterpreterState) -> u32 {
+    print!("{}", char::from_u32(args[0]).unwrap());
     0
 }
