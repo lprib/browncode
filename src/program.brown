@@ -9,9 +9,9 @@ zeros 40
 .CODE
 0 -> i
 while b[&str + i] != 0
-    b[&str + i] + 1 -> b[&ne_w + i]
+    b[&str + i] + 1 -> b[&str + i]
     i+1->i
 end
 
-puts(&ne_w)
+puts(&str)
 println()

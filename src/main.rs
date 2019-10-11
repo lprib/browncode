@@ -6,6 +6,7 @@ mod ast;
 mod intermediate_repr;
 mod interpreter;
 mod util;
+mod graphics;
 
 fn main() {
     // println!("{:#?}", grammar::lines("x*3+1->x"));
