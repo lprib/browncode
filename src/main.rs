@@ -3,13 +3,25 @@
 mod grammar;
 
 mod ast;
+mod graphics;
 mod intermediate_repr;
 mod interpreter;
 mod util;
-mod graphics;
+
+use sdl2::keyboard::Scancode;
 
 fn main() {
-    // println!("{:#?}", grammar::lines("x*3+1->x"));
+    // let mut g = graphics::Graphics::try_new().unwrap();
+    // g.set_draw_color(0xFFFF00FF);
+    // loop {
+    //     g.draw_pixel(2, 2);
+    //     g.present();
+    //     g.delay(100);
+    //     if g.is_key_pressed(41) {
+    //         std::process::exit(0);
+    //     }
+    //     g.poll_events();
+    // }
 
     let pro = include_str!("program.brown");
     let (data, code) = grammar::program(pro).unwrap();

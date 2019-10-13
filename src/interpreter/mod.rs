@@ -1,5 +1,6 @@
 use crate::ast::{AssignTarget, Expr};
 use crate::intermediate_repr::{IntermediateBlock, IntermediateBlockSlice, IntermediateLine};
+use crate::graphics::Graphics;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -17,6 +18,7 @@ pub struct InterpreterState<'a> {
     data: Vec<u8>,
     var_table: HashMap<&'a str, usize>,
     instr_index: usize,
+    graphics: Graphics
 }
 
 pub fn execute<'a>(program: &Program<'a>) {
@@ -24,6 +26,7 @@ pub fn execute<'a>(program: &Program<'a>) {
         data: program.data.clone(),
         var_table: program.data_label_table.clone(),
         instr_index: 0,
+        graphics: Graphics::try_new().unwrap()
     };
 
     loop {

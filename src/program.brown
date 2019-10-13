@@ -5,13 +5,31 @@ str:
 
 ne_w:
 zeros 40
+x:
+0
+y:
+0
 
 .CODE
-0 -> i
-while b[&str + i] != 0
-    b[&str + i] + 1 -> b[&str + i]
-    i+1->i
+start:
+draw_color(0xFF)
+clear()
+draw_color(0x00FFFFFF)
+draw_pixel(2, 2)
+present()
+delay(500)
+for y, 0, 64
+    y * 2 -> m
+    for x, 0, 96
+        (x * 2) -> n
+        draw_color(m << 24 | n << 8 | n << 16 | 0x000000FF)
+        draw_pixel(x, y)
+        poll_events()
+    end
 end
 
-puts(&str)
-println()
+present()
+delay(500)
+poll_events()
+
+goto start
