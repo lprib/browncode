@@ -1,3 +1,5 @@
+//! A simple graphics API using SDL2
+
 use sdl2::event::Event;
 use sdl2::keyboard::Scancode;
 use sdl2::pixels::{Color, PixelFormat, PixelFormatEnum};
@@ -5,9 +7,11 @@ use sdl2::render::Canvas;
 use sdl2::video::Window;
 use sdl2::{EventPump, TimerSubsystem};
 
+
 //in pixels (defined by PIX_SIZE)
 const SCREEN_WIDTH: u32 = 96;
 const SCREEN_HEIGHT: u32 = 64;
+
 const PIX_SIZE: u32 = 8;
 
 const PIXEL_FORMAT: PixelFormatEnum = PixelFormatEnum::RGBA8888;
@@ -19,6 +23,8 @@ pub struct Graphics {
 }
 
 impl Graphics {
+    /// Attempts to make a new graphics object.
+    /// Calling this will create the window and display it
     pub fn try_new() -> Result<Self, String> {
         let sdl = sdl2::init()?;
         let video = sdl.video()?;
@@ -42,10 +48,12 @@ impl Graphics {
         })
     }
 
+    /// Write backbuffer to screen
     pub fn present(&mut self) {
         self.canvas.present();
     }
 
+    /// Color is in RGBA8888 format
     pub fn set_draw_color(&mut self, color: u32) {
         let pixel_format =
             unsafe { PixelFormat::from_ll(sdl2::sys::SDL_AllocFormat(PIXEL_FORMAT as u32)) };

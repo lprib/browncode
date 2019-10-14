@@ -8,16 +8,49 @@ zeros 40
 x:
 0
 y:
-0
+zeros 20
+
+swa2:
+{1F1115111F}
+
+mult:
+10
 
 .CODE
+256 / mult -> color_mult
 start:
-draw_color(0xFF)
+draw_color(0x000000FF)
 clear()
-draw_color(0x00FFFFFF)
-draw_pixel(2, 2)
+draw_color(0xFFFFFFFF)
+for y, 0, 5
+    b[&swa2 + y] -> row
+    for x, 0, 5
+        (row >> x) & 1 -> p
+        if p
+            for x1, 0, mult
+            for y1, 0, mult
+                draw_color((x1 * color_mult) << 24 | (y1 * color_mult) << 16 | 0xFF)
+                draw_pixel((4 - x) * mult + x1, y*mult + y1)
+            end
+            end
+        end
+    end
+end
+
 present()
 delay(500)
+draw_color(0xFFFFFFFF)
+draw_pixel(95, 63)
+present()
+
+loop1:
+if key_pressed(44)
+    goto breakout
+end
+poll_events()
+goto loop1
+breakout:
+
 for y, 0, 64
     y * 2 -> m
     for x, 0, 96
@@ -30,6 +63,18 @@ end
 
 present()
 delay(500)
+draw_color(0xFFFFFFFF)
+draw_pixel(95, 63)
+present()
+
+loop2:
+if key_pressed(44)
+    goto breakout2
+end
+poll_events()
+goto loop2
+breakout2:
+
 poll_events()
 
 goto start

@@ -1,3 +1,4 @@
+// Allow warnings on generated code
 #[allow(clippy::all)]
 #[allow(warnings)]
 mod grammar;
@@ -7,8 +8,6 @@ mod graphics;
 mod intermediate_repr;
 mod interpreter;
 mod util;
-
-use sdl2::keyboard::Scancode;
 
 fn main() {
     // let mut g = graphics::Graphics::try_new().unwrap();
@@ -25,6 +24,7 @@ fn main() {
 
     let pro = include_str!("program.brown");
     let (data, code) = grammar::program(pro).unwrap();
+    println!("{:#?}", code);
     let code = intermediate_repr::to_intermediate_repr(code);
     let (data, data_label_table) = intermediate_repr::convert_data_segment(data);
     let label_table = interpreter::build_label_table(&code);

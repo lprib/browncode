@@ -1,3 +1,5 @@
+//! AST definitions used by PEG and interpreter
+
 pub type Block<'a> = Vec<Line<'a>>;
 
 pub type DataBlock<'a> = Vec<DataDef<'a>>;
@@ -39,12 +41,13 @@ pub enum Line<'a> {
     Goto(&'a str),
     Label(&'a str),
     FunDeclaration(&'a str, Vec<&'a str>, Block<'a>),
-    //at the moment, the expr can only be a Expr::FunCall, otherwise
-    //ambiguity arises (eg. 'end' getting parsed as Expr::Var("end") instead
-    //of the end of a block)
+    // at the moment, the Line::Expr can only be a Expr::FunCall, otherwise
+    // ambiguity arises (eg. 'end' getting parsed as Expr::Var("end") instead
+    // of the end of a block)
     Expr(Expr<'a>),
 }
 
+/// The target of an assignment expression (ie. storing to a variable or an address)
 #[derive(Debug)]
 pub enum AssignTarget<'a> {
     Var(&'a str),
