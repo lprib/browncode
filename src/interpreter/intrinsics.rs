@@ -19,11 +19,14 @@ lazy_static! {
         ("exit", exit),
         ("present", present),
         ("draw_color", draw_color),
-        ("draw_pixel", draw_pixel),
+        ("pixel", pixel),
+        ("fill_rect", fill_rect),
         ("key_pressed", key_pressed),
         ("clear", clear),
         ("delay", delay),
-        ("poll_events", poll_events)
+        ("poll_events", poll_events),
+        ("create_sprite_mono", create_sprite_mono),
+        ("sprite", sprite),
     ];
 }
 
@@ -81,12 +84,17 @@ fn present((_, state): IntrinsicFnArgs) -> u32 {
 }
 
 fn draw_color((args, state): IntrinsicFnArgs) -> u32 {
-    state.graphics.set_draw_color(args[0]);
+    state.graphics.draw_color(args[0]);
     0
 }
 
-fn draw_pixel((args, state): IntrinsicFnArgs) -> u32 {
-    state.graphics.draw_pixel(args[0], args[1]);
+fn pixel((args, state): IntrinsicFnArgs) -> u32 {
+    state.graphics.pixel(args[0], args[1]);
+    0
+}
+
+fn fill_rect((args, state): IntrinsicFnArgs) -> u32 {
+    state.graphics.fill_rect(args[0], args[1], args[2], args[3]);
     0
 }
 
@@ -110,5 +118,19 @@ fn delay((args, state): IntrinsicFnArgs) -> u32 {
 
 fn poll_events((_, state): IntrinsicFnArgs) -> u32 {
     state.graphics.poll_events();
+    0
+}
+
+fn create_sprite_mono((args, state): IntrinsicFnArgs) -> u32 {
+    // must be a multiple of 8
+    let w = args[1];
+    let h = args[2];
+    let color = args[3];
+    let sprite_data = &state.data[args[0] as usize..(args[0] + (w/8) * h) as usize];
+    state.sprites.create_sprite_mono(sprite_data, w, h, color)
+}
+
+fn sprite((args, state): IntrinsicFnArgs) -> u32 {
+    state.graphics.sprite(&state.sprites, args[0], args[1], args[2]);
     0
 }

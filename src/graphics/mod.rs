@@ -3,9 +3,12 @@
 use sdl2::event::Event;
 use sdl2::keyboard::Scancode;
 use sdl2::pixels::{Color, PixelFormat, PixelFormatEnum};
-use sdl2::render::Canvas;
-use sdl2::video::Window;
+use sdl2::rect::Rect;
+use sdl2::render::{Canvas, Texture, TextureCreator, TextureQuery, BlendMode};
+use sdl2::video::{Window, WindowContext};
 use sdl2::{EventPump, TimerSubsystem};
+
+use crate::util::append_u32;
 
 
 //in pixels (defined by PIX_SIZE)
@@ -16,10 +19,22 @@ const PIX_SIZE: u32 = 8;
 
 const PIXEL_FORMAT: PixelFormatEnum = PixelFormatEnum::RGBA8888;
 
+
+/// handles drawing to the screen and imput events
 pub struct Graphics {
     canvas: Canvas<Window>,
     event_pump: EventPump,
     timer: TimerSubsystem,
+}
+
+/// Creates sprites, which are stored in the Sprites struct
+pub struct SpriteCreator(TextureCreator<WindowContext>);
+
+/// Holds sprites, which can be used by Graphics.
+/// This is separate from Graphics and SpriteCreator due to lifetime issues.
+pub struct Sprites<'a> {
+    sprite_creator: &'a SpriteCreator,
+    textures: Vec<Texture<'a>>,
 }
 
 impl Graphics {
@@ -38,6 +53,7 @@ impl Graphics {
         let event_pump = sdl.event_pump()?;
         let timer = sdl.timer()?;
 
+        canvas.set_blend_mode(BlendMode::Blend);
         canvas.set_draw_color((0, 0, 0, 0));
         canvas.clear();
 
@@ -54,15 +70,16 @@ impl Graphics {
     }
 
     /// Color is in RGBA8888 format
-    pub fn set_draw_color(&mut self, color: u32) {
-        let pixel_format =
-            unsafe { PixelFormat::from_ll(sdl2::sys::SDL_AllocFormat(PIXEL_FORMAT as u32)) };
-        self.canvas
-            .set_draw_color(Color::from_u32(&pixel_format, color));
+    pub fn draw_color(&mut self, color: u32) {
+        self.canvas.set_draw_color(to_color(color));
     }
 
-    pub fn draw_pixel(&mut self, x: u32, y: u32) {
+    pub fn pixel(&mut self, x: u32, y: u32) {
         self.canvas.draw_point((x as i32, y as i32)).unwrap();
+    }
+
+    pub fn fill_rect(&mut self, x: u32, y: u32, w: u32, h: u32) {
+        self.canvas.fill_rect(Rect::new(x as i32, y as i32, w, h)).unwrap();
     }
 
     pub fn poll_events(&mut self) {
@@ -86,4 +103,63 @@ impl Graphics {
             .keyboard_state()
             .is_scancode_pressed(Scancode::from_i32(scancode as i32).expect("not a valid scancode"))
     }
+
+    pub fn sprite(&mut self, sprites: &Sprites, sprite_index: u32, x: u32, y: u32) {
+        let tex = &sprites.textures[sprite_index as usize];
+        let TextureQuery { width, height, .. } = tex.query();
+        self.canvas
+            .copy(tex, None, Rect::new(x as i32, y as i32, width, height))
+            .unwrap();
+    }
+
+    pub fn get_sprite_creator(&self) -> SpriteCreator {
+        SpriteCreator(self.canvas.texture_creator())
+    }
+}
+
+impl<'a> Sprites<'a> {
+    pub fn new(sprite_creator: &'a SpriteCreator) -> Self {
+        Sprites {
+            sprite_creator,
+            textures: Vec::new(),
+        }
+    }
+
+    /// Create a monochromatic sprite, where each bit in data represents a pixel.
+    /// Returns the index of the sprite 
+    /// (which can be used to identify the sprite when using it in Graphics).
+    /// w MUST be a multiple of 8
+    pub fn create_sprite_mono(&mut self, data: &[u8], w: u32, h: u32, color: u32) -> u32 {
+        let mut tex = self
+            .sprite_creator
+            .0
+            .create_texture_static(PIXEL_FORMAT, w, h)
+            .unwrap();
+        tex.set_blend_mode(BlendMode::Blend);
+        let mut new_tex_data = Vec::new();
+        for byte in data {
+            for bit_index in (0..8).rev() {
+                if (byte >> bit_index) & 1u8 != 0u8 {
+                    new_tex_data.push(color as u8);
+                    new_tex_data.push((color >> 8) as u8);
+                    new_tex_data.push((color >> 16) as u8);
+                    new_tex_data.push((color >> 24) as u8);
+                } else {
+                    append_u32(&mut new_tex_data, 0);
+                }
+            }
+            println!();
+        }
+        tex.update(None, &new_tex_data, (w * 4) as usize).unwrap();
+        self.textures.push(tex);
+
+        (self.textures.len() - 1) as u32
+    }
+}
+
+/// Formates the u32 based on PIXEL_FORMAT const
+fn to_color(n: u32) -> Color {
+    let pixel_format =
+        unsafe { PixelFormat::from_ll(sdl2::sys::SDL_AllocFormat(PIXEL_FORMAT as u32)) };
+    Color::from_u32(&pixel_format, n)
 }

@@ -38,13 +38,12 @@ for y, 0, 5
 end
 
 present()
-delay(500)
 draw_color(0xFFFFFFFF)
 draw_pixel(95, 63)
 present()
 
 loop1:
-if key_pressed(44)
+if key_pressed(4)
     goto breakout
 end
 poll_events()
@@ -62,13 +61,12 @@ for y, 0, 64
 end
 
 present()
-delay(500)
 draw_color(0xFFFFFFFF)
 draw_pixel(95, 63)
 present()
 
 loop2:
-if key_pressed(44)
+if key_pressed(5)
     goto breakout2
 end
 poll_events()

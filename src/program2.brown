@@ -1,0 +1,64 @@
+.DATA
+tail_len:
+256
+
+tail:
+zeros 512
+
+.CODE
+2->x
+2->y
+256 / tail_len -> color_mult
+
+loop:
+if key_pressed(41)
+    exit()
+end
+if key_pressed(26)
+    y-1->y
+end
+if key_pressed(4)
+    x-1->x
+end
+if key_pressed(22)
+    y+1->y
+end
+if key_pressed(7)
+    x+1->x
+end
+if x = 1
+    94->x
+end
+if x = 95
+    1->x
+end
+if y = 1
+    62->y
+end
+if y = 63
+    1->y
+end
+for i, 1, tail_len
+    b[&tail + i*2] -> b[&tail + i*2 - 2]
+    b[&tail + i*2 + 1] -> b[&tail + i*2 - 1]
+end
+x -> b[&tail + tail_len*2 - 2]
+y -> b[&tail + tail_len*2 - 1]
+
+draw_color(0xFF)
+clear()
+draw_color(0x505050ff)
+for i, 0, tail_len
+fill_rect(b[&tail + i*2] - 2, b[&tail + i*2 + 1] - 2, 5, 5)
+end
+
+for i, 0, tail_len
+    b[&tail + i*2] -> px
+    b[&tail + i*2 + 1] -> py
+    draw_color((i*color_mult) << 24 | ((tail_len - i - 1)*color_mult)<<8|0xff)
+    fill_rect(px - 2, py - 2, 5, 5)
+end
+present()
+delay(1)
+poll_events()
+goto loop

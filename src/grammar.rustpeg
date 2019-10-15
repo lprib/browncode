@@ -6,9 +6,11 @@ _ = #quiet<[ \t]*>
 //any whitespace, but must include at least one newline
 __ = #quiet<[ \t]* "\n" [ \t\n]*>
 
-pub expression_atom -> Expr<'input> = deref_byte / fun_call / var / number_literal / deref / var_address / parens
 
-pub ident -> &'input str = i:$([a-zA-Z_][a-zA-Z0-9_]*)
+
+expression_atom -> Expr<'input> = deref_byte / fun_call / var / number_literal / deref / var_address / parens
+
+ident -> &'input str = i:$([a-zA-Z_][a-zA-Z0-9_]*)
     { i }
 
 decimal -> Expr<'input> = n:$([0-9]+)
@@ -47,7 +49,7 @@ fun_call -> Expr<'input> = i:ident _ "(" args:(fun_call_arg ** ",") ")"
     { Expr::FunCall(i, args) }
 
 
-pub expression -> Expr<'input> = #infix<padded_expression_atom> {
+expression -> Expr<'input> = #infix<padded_expression_atom> {
     #L  x "|" y { Expr::BitOr(Box::new(x), Box::new(y)) }
     #L  x "^" y { Expr::BitXor(Box::new(x), Box::new(y)) }
     #L  x "&" y { Expr::BitAnd(Box::new(x), Box::new(y)) }
@@ -83,7 +85,7 @@ assign_target -> AssignTarget<'input> = assign_target_byte_addr / assign_target_
 assign -> Line<'input> = e:expression _ "->" _ t:assign_target
     { Line::Assign(t, e) }
 
-pub lines -> Block<'input> = l:(line ** __)
+lines -> Block<'input> = l:(line ** __)
     { l }
 
 for_loop -> Line<'input> = "for" _ i:ident _ "," _ start:expression _ "," _ end:expression __ l:lines __ "end"
@@ -127,8 +129,11 @@ data_byte_hex -> u8 = n:$([a-fA-f0-9]*<2>)
 data_bytes_hex -> DataDef<'input> = "{" _ bytes:(data_byte_hex ** _ ) _ "}"
     { DataDef::Bytes(bytes) }
 
-data_byte_dec -> DataDef<'input> = "b" n:$([0-9]+)
+data_u8_dec -> DataDef<'input> = n:$([0-9]+) "b"
     { DataDef::Bytes(vec![n.parse::<u8>().unwrap(); 1]) }
+
+data_u8_bin -> DataDef<'input> = "0b" n:$([0-1]+)
+    { DataDef::Bytes(vec![u8::from_str_radix(n, 2).unwrap()]) }
 
 data_u32_dec -> DataDef<'input> = n:$([0-9]+)
     { 
@@ -143,9 +148,9 @@ data_label -> DataDef<'input> = n:ident _ ":"
 data_string -> DataDef<'input> = "\"" string:$(.[^"]*) "\""
     { DataDef::Bytes(string.as_bytes().to_vec()) }
 
-data_line -> DataDef<'input> = data_zeros / data_bytes_hex / data_byte_dec / data_label / data_string / data_u32_dec
+data_line -> DataDef<'input> = data_u8_bin / data_u8_dec / data_zeros / data_bytes_hex / data_label / data_string / data_u32_dec
 
-pub data_segment -> DataBlock<'input> = block:(data_line ** __)
+data_segment -> DataBlock<'input> = block:(data_line ** __)
     { block }
 
 

@@ -1,7 +1,7 @@
 //! The interpreter that runs IntermediateLine IR
 
 use crate::ast::{AssignTarget, Expr};
-use crate::graphics::Graphics;
+use crate::graphics::{Graphics, Sprites, SpriteCreator};
 use crate::intermediate_repr::{IntermediateBlock, IntermediateBlockSlice, IntermediateLine};
 
 use std::borrow::Cow;
@@ -27,18 +27,26 @@ pub struct InterpreterState<'a> {
     var_table: HashMap<&'a str, usize>,
     /// current instruction pointer
     instr_index: usize,
+
     graphics: Graphics,
+    sprite_creator: &'a SpriteCreator,
+    sprites: Sprites<'a>,
 }
 
 pub fn execute<'a>(program: &Program<'a>) {
     // TODO take ownership of program so clones are not needed?
+    let graphics = Graphics::try_new().unwrap();
+    let sprite_creator = &graphics.get_sprite_creator();
+    let sprites = Sprites::new(&sprite_creator);
 
     let mut state = InterpreterState {
         // copy user defined data into a mutable vec
         data: program.data.clone(),
         var_table: program.data_label_table.clone(),
         instr_index: 0,
-        graphics: Graphics::try_new().unwrap(),
+        graphics,
+        sprite_creator,
+        sprites
     };
 
     while state.instr_index < program.code.len() {
@@ -108,8 +116,8 @@ impl<'a> InterpreterState<'a> {
         // TODO macro for this?
         match expr {
             Literal(n) => *n,
-            Add(l, r) => self.bin_op(&l, &r, program, |a, b| a + b),
-            Sub(l, r) => self.bin_op(&l, &r, program, |a, b| a - b),
+            Add(l, r) => self.bin_op(&l, &r, program, |a, b| a.wrapping_add(b)),
+            Sub(l, r) => self.bin_op(&l, &r, program, |a, b| a.wrapping_sub(b)),
             Mul(l, r) => self.bin_op(&l, &r, program, |a, b| a * b),
             Div(l, r) => self.bin_op(&l, &r, program, |a, b| a / b),
             Mod(l, r) => self.bin_op(&l, &r, program, |a, b| a % b),

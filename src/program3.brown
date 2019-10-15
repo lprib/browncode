@@ -1,0 +1,63 @@
+.DATA
+spr:
+0b00111100
+0b01000010
+0b10100101
+0b10000001
+0b10100101
+0b10011001
+0b01000010
+0b00111100
+
+0b00000000
+0b00111100
+0b01111110
+0b01111110
+0b01111110
+0b01111110
+0b00111100
+0b00000000
+
+.CODE
+10->x
+10->y
+
+loop:
+if key_pressed(41)
+    exit()
+end
+if key_pressed(26)
+    y-1->y
+end
+if key_pressed(4)
+    x-1->x
+end
+if key_pressed(22)
+    y+1->y
+end
+if key_pressed(7)
+    x+1->x
+end
+if x = 1
+    94->x
+end
+if x = 95
+    1->x
+end
+if y = 1
+    62->y
+end
+if y = 63
+    1->y
+end
+
+create_sprite_mono(&spr, 8, 8, 0xFF00FFFF)
+create_sprite_mono(&spr + 8, 8, 8, 0xFF)
+draw_color(0x00000005)
+fill_rect(0, 0, 96, 64)
+sprite(1, x, y)
+sprite(0, x, y)
+present()
+delay(10)
+poll_events()
+goto loop
