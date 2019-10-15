@@ -1,0 +1,18 @@
+.DATA
+0
+
+.CODE
+loop:
+draw_color(0x00000010)
+fill_rect(0, 0, 96, 64)
+
+random_range(0, 96) -> x
+random_range(0, 64) -> y
+random() -> c
+0xFF->b[&c+3]
+draw_color(c)
+fill_rect(x, y, 4, 4)
+poll_events()
+present()
+delay(20)
+goto loop

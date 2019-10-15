@@ -2,135 +2,164 @@
 
 use super::InterpreterState;
 use lazy_static::lazy_static;
+use rand::Rng;
 use std::char;
 
-
-type IntrinsicFn = fn(IntrinsicFnArgs) -> u32;
 type IntrinsicFnArgs<'a, 'b> = (&'a [u32], &'a mut InterpreterState<'b>);
 
-lazy_static! {
-    /// Maps names of instrinsic functions to their definition
-    /// Uses array with linear search at the moment (can be converted to HashMap)
-    static ref INTRINSICS: &'static [(&'static str, IntrinsicFn)] = &[
-        ("println", println),
-        ("print", print),
-        ("puts", puts),
-        ("putc", putc),
-        ("exit", exit),
-        ("present", present),
-        ("draw_color", draw_color),
-        ("pixel", pixel),
-        ("fill_rect", fill_rect),
-        ("key_pressed", key_pressed),
-        ("clear", clear),
-        ("delay", delay),
-        ("poll_events", poll_events),
-        ("create_sprite_mono", create_sprite_mono),
-        ("sprite", sprite),
-    ];
+enum ExpectedArgs {
+    Fixed(&'static [usize]),
+    VarArg,
 }
 
-/// Get instrinsic function from name
-pub fn get_intrinsic(name: &str) -> Option<&IntrinsicFn> {
-    for (ref f_name, f) in INTRINSICS.iter() {
-        if &name == f_name {
-            return Some(f);
+struct Intrinsic {
+    name: &'static str,
+    expected_args: ExpectedArgs,
+    f: fn(IntrinsicFnArgs) -> u32,
+}
+
+pub fn try_execute_intrinsic(
+    name: &str,
+    args: &[u32],
+    state: &mut InterpreterState,
+) -> Option<u32> {
+    INTRINSICS
+        .iter()
+        // find the intrinsic that matches the name
+        .find(
+            |Intrinsic {
+                 name: test_name, ..
+             }| test_name == &name,
+        )
+        // map intrinsic to its return value
+        .map(|intrinsic| {
+            // check arg lengths
+            match intrinsic.expected_args {
+                ExpectedArgs::Fixed(arg_lens) => {
+                    arg_lens
+                        .iter()
+                        .find(|&&arg_len| arg_len == args.len())
+                        .or_else(|| {
+                            panic!(
+                                "{} expects {:?} arguments, {} given",
+                                name,
+                                arg_lens,
+                                args.len()
+                            )
+                        });
+                }
+                ExpectedArgs::VarArg => { /*No arg length checking for varargs*/ }
+            }
+            (intrinsic.f)((args, state))
+        })
+}
+
+macro_rules! intrinsic {
+    ($name:ident, [ $( $expected_arg:expr ),+ ], $arguments:pat => $fn:block) => {
+        Intrinsic {
+            name: stringify!($name),
+            expected_args: ExpectedArgs::Fixed(&[ $($expected_arg),* ]),
+            f: |$arguments| $fn,
+        }
+    };
+
+    ($name:ident, vararg, $arguments:pat => $fn:block) => {
+        Intrinsic {
+            name: stringify!($name),
+            expected_args: ExpectedArgs::VarArg,
+            f: |$arguments| $fn,
         }
     }
-    None
 }
+lazy_static! {
+    static ref INTRINSICS: &'static [Intrinsic] = &[
+        intrinsic!(println, vararg, (args, _) => {
+            if args.is_empty() {
+                println!();
+                return 0;
+            }
 
-fn println((args, _): IntrinsicFnArgs) -> u32 {
-    if args.is_empty() {
-        println!();
-        return 0;
-    }
+            for arg in args {
+                println!("{}", arg);
+            }
+            0
+        }),
+        intrinsic!(print, vararg, (args, _) => {
+            for arg in args {
+                print!("{}", arg);
+            }
+            0
+        }),
+        intrinsic!(puts, [1], (args, _) => {
+            for arg in args {
+                print!("{}", arg);
+            }
+            0
+        }),
+        intrinsic!(putc, [1], (args, _) => {
+            print!("{}", char::from_u32(args[0]).unwrap());
+            0
+        }),
+        intrinsic!(exit, [0], _ => {
+            std::process::exit(0)
+        }),
 
-    for arg in args {
-        println!("{}", arg);
-    }
-    0
-}
+        intrinsic!(random, [0], _ => {
+            rand::random()
+        }),
+        intrinsic!(random_range, [2], (args, _) => {
+            rand::thread_rng().gen_range(args[0], args[1])
+        }),
 
-fn print((args, _): IntrinsicFnArgs) -> u32 {
-    for arg in args {
-        print!("{}", arg);
-    }
-    0
-}
+        intrinsic!(present, [0], (_, state) => {
+            state.graphics.present();
+            0
+        }),
 
-fn puts((args, state): IntrinsicFnArgs) -> u32 {
-    let mut i = args[0] as usize;
-    while state.data[i] != 0 {
-        print!("{}", state.data[i] as char);
-        i += 1;
-    }
-    0
-}
-
-fn putc((args, _): IntrinsicFnArgs) -> u32 {
-    print!("{}", char::from_u32(args[0]).unwrap());
-    0
-}
-
-fn exit(_: IntrinsicFnArgs) -> u32 {
-    std::process::exit(0)
-}
-
-//GRAPHICS ROUTINES
-fn present((_, state): IntrinsicFnArgs) -> u32 {
-    state.graphics.present();
-    0
-}
-
-fn draw_color((args, state): IntrinsicFnArgs) -> u32 {
-    state.graphics.draw_color(args[0]);
-    0
-}
-
-fn pixel((args, state): IntrinsicFnArgs) -> u32 {
-    state.graphics.pixel(args[0], args[1]);
-    0
-}
-
-fn fill_rect((args, state): IntrinsicFnArgs) -> u32 {
-    state.graphics.fill_rect(args[0], args[1], args[2], args[3]);
-    0
-}
-
-fn key_pressed((args, state): IntrinsicFnArgs) -> u32 {
-    if state.graphics.is_key_pressed(args[0]) {
-        1
-    } else {
-        0
-    }
-}
-
-fn clear((_, state): IntrinsicFnArgs) -> u32 {
-    state.graphics.clear();
-    0
-}
-
-fn delay((args, state): IntrinsicFnArgs) -> u32 {
-    state.graphics.delay(args[0]);
-    0
-}
-
-fn poll_events((_, state): IntrinsicFnArgs) -> u32 {
-    state.graphics.poll_events();
-    0
-}
-
-fn create_sprite_mono((args, state): IntrinsicFnArgs) -> u32 {
-    // must be a multiple of 8
-    let w = args[1];
-    let h = args[2];
-    let color = args[3];
-    let sprite_data = &state.data[args[0] as usize..(args[0] + (w/8) * h) as usize];
-    state.sprites.create_sprite_mono(sprite_data, w, h, color)
-}
-
-fn sprite((args, state): IntrinsicFnArgs) -> u32 {
-    state.graphics.sprite(&state.sprites, args[0], args[1], args[2]);
-    0
+        intrinsic!(draw_color, [1], (args, state) => {
+            state.graphics.draw_color(args[0]);
+            0
+        }),
+        intrinsic!(pixel, [2], (args, state) => {
+            state.graphics.pixel(args[0], args[1]);
+            0
+        }),
+        intrinsic!(fill_rect, [4], (args, state) => {
+            state.graphics.fill_rect(args[0], args[1], args[2], args[3]);
+            0
+        }),
+        intrinsic!(key_pressed, [1], (args, state) => {
+            if state.graphics.is_key_pressed(args[0]) {
+                1
+            } else {
+                0
+            }
+        }),
+        intrinsic!(clear, [0], (_, state) => {
+            state.graphics.clear();
+            0
+        }),
+        intrinsic!(delay, [1], (args, state) => {
+            state.graphics.delay(args[0]);
+            0
+        }),
+        intrinsic!(poll_events, [0], (_, state) => {
+            state.graphics.poll_events();
+            0
+        }),
+        intrinsic!(create_sprite_mono, [4], (args, state) => {
+            // must be a multiple of 8
+            let w = args[1];
+            let h = args[2];
+            let color = args[3];
+            let sprite_data = &state.data[args[0] as usize..(args[0] + (w / 8) * h) as usize];
+            state.sprites.create_sprite_mono(sprite_data, w, h, color)
+                }),
+                intrinsic!(sprite, [3], (args, state) => {
+                    state
+                .graphics
+                .sprite(&state.sprites, args[0], args[1], args[2]);
+            0
+        })
+    ];
 }

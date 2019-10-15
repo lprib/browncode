@@ -1,7 +1,7 @@
 //! The interpreter that runs IntermediateLine IR
 
 use crate::ast::{AssignTarget, Expr};
-use crate::graphics::{Graphics, Sprites, SpriteCreator};
+use crate::graphics::{Graphics, Sprites};
 use crate::intermediate_repr::{IntermediateBlock, IntermediateBlockSlice, IntermediateLine};
 
 use std::borrow::Cow;
@@ -11,7 +11,7 @@ mod intrinsics;
 
 /// The immutable program data that is run by the interpreter
 pub struct Program<'a> {
-    pub code: IntermediateBlock<'a>,
+    pub ir: IntermediateBlock<'a>,
     pub data: Vec<u8>,
     /// Maps labels to the line that they point to in code
     pub label_table: HashMap<Cow<'a, str>, usize>,
@@ -29,7 +29,6 @@ pub struct InterpreterState<'a> {
     instr_index: usize,
 
     graphics: Graphics,
-    sprite_creator: &'a SpriteCreator,
     sprites: Sprites<'a>,
 }
 
@@ -45,11 +44,10 @@ pub fn execute<'a>(program: &Program<'a>) {
         var_table: program.data_label_table.clone(),
         instr_index: 0,
         graphics,
-        sprite_creator,
-        sprites
+        sprites,
     };
 
-    while state.instr_index < program.code.len() {
+    while state.instr_index < program.ir.len() {
         state.execute_line(program);
     }
 }
@@ -61,7 +59,7 @@ impl<'a> InterpreterState<'a> {
     /// in the current line will jump to the function definition and fully execute
     /// before returning to the current line.
     fn execute_line(&mut self, program: &Program<'a>) {
-        let line = &program.code[self.instr_index];
+        let line = &program.ir[self.instr_index];
         use IntermediateLine::*;
         match line {
             Assign(target, expr) => {
@@ -132,6 +130,14 @@ impl<'a> InterpreterState<'a> {
             Geq(l, r) => self.bin_bool_op(&l, &r, program, |a, b| a >= b),
             Neq(l, r) => self.bin_bool_op(&l, &r, program, |a, b| a != b),
             Eq(l, r) => self.bin_bool_op(&l, &r, program, |a, b| a == b),
+            // LOGICAL inversion
+            Invert(e) => {
+                if self.evaluate_expr(e, program) == 0 {
+                    1
+                } else {
+                    0
+                }
+            }
 
             FunCall(name, args) => {
                 let evaluated_args = args
@@ -195,35 +201,32 @@ impl<'a> InterpreterState<'a> {
     /// Executes a function (defined by name) and returns its result
     /// May be an intrinsic function or a user defined one
     fn evaluate_funcall(&mut self, name: &str, args: &[u32], program: &Program<'a>) -> u32 {
-        if let Some(intrinsic_fn) = intrinsics::get_intrinsic(name) {
-            // intrinsic function
-            intrinsic_fn((args, self))
-        } else {
-            // user-defined function
-
+        intrinsics::try_execute_intrinsic(name, args, self).unwrap_or_else(|| {
+            // on user-defined function:
             let return_instr_index = self.instr_index;
             //jump to function
-            self.instr_index = program.label_table[name];
+            self.instr_index = *program.label_table.get(name).unwrap_or_else(||panic!("function {} not found", name));
 
-            if let IntermediateLine::FunDeclaration(_, params) = &program.code[self.instr_index] {
-                for (i, param) in params.iter().enumerate() {
+            if let IntermediateLine::FunDeclaration(_, params) = &program.ir[self.instr_index] {
+                params.iter().enumerate().for_each(|(index, param)| {
                     let addr = get_var_address(param, &mut self.var_table, &mut self.data);
-                    let arg_value = args.get(i).copied().unwrap_or(0u32);
+                    let arg_value = args.get(index).copied().unwrap_or(0u32);
                     set_memory_u32(addr, &mut self.data, arg_value);
-                }
+                });
 
                 loop {
-                    if let IntermediateLine::FunReturn = program.code[self.instr_index] {
+                    if let IntermediateLine::FunReturn = program.ir[self.instr_index] {
                         break;
                     }
                     self.execute_line(program);
                 }
+
                 self.instr_index = return_instr_index;
                 get_var_value("ans", &mut self.var_table, &mut self.data)
             } else {
                 panic!("{} is not a valid function", name);
             }
-        }
+        })
     }
 }
 
@@ -234,7 +237,9 @@ pub fn build_label_table<'a>(program: &IntermediateBlockSlice<'a>) -> HashMap<Co
         // fun declarations are essentially labels, so add them to the map as well
         // NOTE this means there can be name conflicts between fun names and label names
         if let IntermediateLine::Label(name) | IntermediateLine::FunDeclaration(name, _) = line {
-            //TODO check if name already exists in table (conflict)
+            if map.contains_key(name) {
+                panic!("label {} is defined more than once", name);
+            }
             map.insert(name.clone(), i);
         }
     }
@@ -273,9 +278,8 @@ fn get_var_value<'a>(
 }
 
 /// Panics on out of bounds
-/// TODO return result
+/// TODO return Result<T,E>
 fn get_memory_u32(index: usize, vec: &[u8]) -> u32 {
-    //todo better (unsafe) way? (mem::transmute)
     u32::from(vec[index]) << 24
         | u32::from(vec[index + 1]) << 16
         | u32::from(vec[index + 2]) << 8

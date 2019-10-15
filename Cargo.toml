@@ -6,9 +6,11 @@ edition = "2018"
 build = "build.rs"
 
 [build-dependencies]
-peg = { version = "0.5.7" }
+peg = { version = "0.5" }
 
 [dependencies]
-peg = "0.5.7"
+peg = "0.5"
 sdl2 = "0.32"
-lazy_static = "1.4.0"
+lazy_static = "1.4"
+structopt = "0.3"
+rand = "0.7"

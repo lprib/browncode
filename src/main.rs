@@ -9,45 +9,67 @@ mod intermediate_repr;
 mod interpreter;
 mod util;
 
-fn main() {
-    // let mut g = graphics::Graphics::try_new().unwrap();
-    // let c = g.get_sprite_creator();
-    // let mut s = graphics::Sprites::new(&c);
-    // s.create_sprite_mono(
-    //     &[0b0110_1010, 0b10101010, 0b01101001, 0b10101010],
-    //     8,
-    //     4,
-    //     0x00FF0005,
-    // );
-    // g.draw_color(0xFF000030);
-    // g.fill_rect(20, 20, 20, 20);
-    // g.draw_color(0xFFFF_00FF);
-    // loop {
-    //     // g.pixel(2, 2);
-    //     g.sprite(&s, 0, 0, 0);
-    //     g.present();
-    //     g.delay(100);
-    //     if g.is_key_pressed(41) {
-    //         std::process::exit(0);
-    //     }
-    //     g.poll_events();
-    // }
+use structopt::StructOpt;
+use structopt::clap::arg_enum;
+use std::path::PathBuf;
+use std::fs::read_to_string;
 
-    let pro = include_str!("program3.brown");
-    let (data, code) = grammar::program(pro).unwrap();
-    // println!("{:#?}", code);
-    let code = intermediate_repr::to_intermediate_repr(code);
-    let (data, data_label_table) = intermediate_repr::convert_data_segment(data);
-    let label_table = interpreter::build_label_table(&code);
+arg_enum! {
+    #[derive(Debug)]
+    enum OutputType {
+        Ast,
+        PrettyAst,
+        Ir,
+        Run
+    }
+}
 
-    // println!("{:#?}", code);
+#[derive(StructOpt, Debug)]
+#[structopt(name = "brown", author = "Liam Pribis")]
+struct Opt {
+    #[structopt(parse(from_os_str))]
+    input_file: PathBuf,
 
-    let program = interpreter::Program {
-        code,
-        data,
-        data_label_table,
-        label_table,
-    };
+    #[structopt(short = "t", long = "output-type", possible_values = &OutputType::variants(), case_insensitive = true, default_value = "run")]
+    output_type: OutputType,
 
-    interpreter::execute(&program);
+}
+
+fn main()-> Result<(), String> {
+    let opt = Opt::from_args();
+
+    let program = read_to_string(opt.input_file).map_err(|_| String::from("Could not read file"))?;
+    let (data, ast) = grammar::program(&program).map_err(|e| e.to_string())?;
+    match opt.output_type {
+        OutputType::Ast => {
+            println!("{:?}", ast);
+            Ok(())
+        }
+
+        OutputType::PrettyAst => {
+            println!("{:#?}", ast);
+            Ok(())
+        }
+
+        OutputType::Ir => {
+            let ir = intermediate_repr::to_intermediate_repr(ast);
+            println!("{:?}", ir);
+            Ok(())
+        }
+
+        OutputType::Run => {
+            let ir = intermediate_repr::to_intermediate_repr(ast);
+            let (data, data_label_table) = intermediate_repr::convert_data_segment(data);
+            let label_table = interpreter::build_label_table(&ir);
+            let program = interpreter::Program {
+                ir,
+                data,
+                data_label_table,
+                label_table,
+            };
+
+            interpreter::execute(&program);
+            Ok(())
+        }
+    }
 }

@@ -30,7 +30,7 @@ for y, 0, 5
             for x1, 0, mult
             for y1, 0, mult
                 draw_color((x1 * color_mult) << 24 | (y1 * color_mult) << 16 | 0xFF)
-                draw_pixel((4 - x) * mult + x1, y*mult + y1)
+                pixel((4 - x) * mult + x1, y*mult + y1)
             end
             end
         end
@@ -39,7 +39,7 @@ end
 
 present()
 draw_color(0xFFFFFFFF)
-draw_pixel(95, 63)
+pixel(95, 63)
 present()
 
 loop1:
@@ -55,14 +55,14 @@ for y, 0, 64
     for x, 0, 96
         (x * 2) -> n
         draw_color(m << 24 | n << 8 | n << 16 | 0x000000FF)
-        draw_pixel(x, y)
+        pixel(x, y)
         poll_events()
     end
 end
 
 present()
 draw_color(0xFFFFFFFF)
-draw_pixel(95, 63)
+pixel(95, 63)
 present()
 
 loop2:

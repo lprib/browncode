@@ -4,11 +4,11 @@ use crate::util::append_u32;
 _ = #quiet<[ \t]*>
 
 //any whitespace, but must include at least one newline
-__ = #quiet<[ \t]* "\n" [ \t\n]*>
+__ = #quiet<[ \t]* ("\n"/":") [ \t\n]*>
 
 
 
-expression_atom -> Expr<'input> = deref_byte / fun_call / var / number_literal / deref / var_address / parens
+expression_atom -> Expr<'input> = invert / deref_byte / fun_call / var / number_literal / deref / var_address / parens
 
 ident -> &'input str = i:$([a-zA-Z_][a-zA-Z0-9_]*)
     { i }
@@ -32,6 +32,9 @@ deref_byte -> Expr<'input> = "b[" _ e:expression _ "]"
 
 var -> Expr<'input> = i:ident
     { Expr::Var(i) }
+
+invert -> Expr<'input> = "!" _ e:expression
+    { Expr::Invert(Box::new(e)) }
 
 var_address -> Expr<'input> = "&" _ i:ident
     { Expr::VarAddress(i) }
@@ -69,7 +72,7 @@ expression -> Expr<'input> = #infix<padded_expression_atom> {
     
 }
 
-line -> Line<'input> = assign / fun_declaration / label / for_loop / while_loop / if_else / if_block / goto / expr_line
+line -> LineData<'input> = assign / fun_declaration / label / for_loop / while_loop / if_else / if_block / goto / expr_line
 
 assign_target_var -> AssignTarget<'input> = i:ident
     { AssignTarget::Var(i) }
@@ -82,38 +85,39 @@ assign_target_byte_addr -> AssignTarget<'input> = "b[" _ e:expression _ "]"
 
 assign_target -> AssignTarget<'input> = assign_target_byte_addr / assign_target_var / assign_target_addr
 
-assign -> Line<'input> = e:expression _ "->" _ t:assign_target
-    { Line::Assign(t, e) }
-
 lines -> Block<'input> = l:(line ** __)
     { l }
 
-for_loop -> Line<'input> = "for" _ i:ident _ "," _ start:expression _ "," _ end:expression __ l:lines __ "end"
-    { Line::For(i, start, end, l) }
+assign -> LineData<'input> = p:#position e:expression _ "->" _ t:assign_target
+    { (p, Line::Assign(t, e)).into() }
 
-while_loop -> Line<'input> = "while" _ e:expression __ l:lines __ "end"
-    { Line::While(e, l) }
+for_loop -> LineData<'input> = p:#position "for" _ i:ident _ "," _ start:expression _ "," _ 
+end:expression __ l:lines __ "end"
+    { (p, Line::For(i, start, end, l)).into() }
 
-if_else -> Line<'input> = "if" _ e:expression __ l:lines __ "else" __ ll:lines __ "end"
-    { Line::If(e, l, Some(ll))}
+while_loop -> LineData<'input> = p:#position "while" _ e:expression __ l:lines __ "end"
+    { (p, Line::While(e, l)).into() }
 
-if_block -> Line<'input> = "if" _ e:expression __ l:lines __ "end"
-    { Line::If(e, l, None) }
+if_else -> LineData<'input> = p:#position "if" _ e:expression __ l:lines __ "else" __ ll:lines __ "end"
+    { (p, Line::If(e, l, Some(ll))).into() }
 
-goto -> Line<'input> = "goto" _ n:ident
-    { Line::Goto(n) }
+if_block -> LineData<'input> = p:#position "if" _ e:expression __ l:lines __ "end"
+    { (p, Line::If(e, l, None)).into() }
 
-label -> Line<'input> = n:ident _ ":"
-    { Line::Label(n) }
+goto -> LineData<'input> = p:#position "goto" _ n:ident
+    { (p, Line::Goto(n)).into() }
+
+label -> LineData<'input> = p:#position n:ident _ ":"
+    { (p, Line::Label(n)).into() }
  
 fun_arg -> &'input str = _ i:ident _
     { i }
 
-fun_declaration -> Line<'input> = "func" _ i:ident _ "(" args:(fun_arg ** ",") ")" __ l:lines __ "end"
-    { Line::FunDeclaration(i, args, l) }
+fun_declaration -> LineData<'input> = p:#position "func" _ i:ident _ "(" args:(fun_arg ** ",") ")" __ l:lines __ "end"
+    { (p, Line::FunDeclaration(i, args, l)).into() }
 
-expr_line -> Line<'input> = e:fun_call
-    { Line::Expr(e) }
+expr_line -> LineData<'input> = p:#position e:fun_call
+    { (p, Line::Expr(e)).into() }
 
 
 // DATA SEGMENT

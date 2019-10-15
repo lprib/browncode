@@ -148,8 +148,8 @@ impl<'a> Sprites<'a> {
                     append_u32(&mut new_tex_data, 0);
                 }
             }
-            println!();
         }
+        // the pitch (in bytes) is w * 4 because there are 4 bytes (RGBA8888) per pixel
         tex.update(None, &new_tex_data, (w * 4) as usize).unwrap();
         self.textures.push(tex);
 

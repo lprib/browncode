@@ -36,7 +36,7 @@ pub fn to_intermediate_repr(ast: Block<'_>) -> IntermediateBlock<'_> {
 fn convert_block<'a>(block: Block<'a>, counter: &mut u32) -> IntermediateBlock<'a> {
     block
         .into_iter()
-        .flat_map(|line| convert_line(line, counter))
+        .flat_map(|line| convert_line(line.line, counter))
         .collect()
 }
 

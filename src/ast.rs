@@ -1,6 +1,6 @@
 //! AST definitions used by PEG and interpreter
 
-pub type Block<'a> = Vec<Line<'a>>;
+pub type Block<'a> = Vec<LineData<'a>>;
 
 pub type DataBlock<'a> = Vec<DataDef<'a>>;
 
@@ -13,6 +13,7 @@ pub enum Expr<'a> {
     DerefByte(E<'a>),
     Var(&'a str),
     VarAddress(&'a str),
+    Invert(E<'a>),
     Add(E<'a>, E<'a>),
     Sub(E<'a>, E<'a>),
     Mul(E<'a>, E<'a>),
@@ -30,6 +31,19 @@ pub enum Expr<'a> {
     Shl(E<'a>, E<'a>),
     Shr(E<'a>, E<'a>),
     FunCall(&'a str, Vec<Expr<'a>>),
+}
+
+#[derive(Debug)]
+pub struct LineData<'a> {
+    /// The character index into the input string that this line starts on
+    pub start_index: usize,
+    pub line: Line<'a>
+}
+
+impl<'a> From<(usize, Line<'a>)> for LineData<'a> {
+    fn from((start_index, line): (usize, Line<'a>)) -> LineData {
+        LineData{ start_index, line }
+    }
 }
 
 #[derive(Debug)]
