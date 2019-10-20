@@ -4,20 +4,27 @@ use super::InterpreterState;
 use lazy_static::lazy_static;
 use rand::Rng;
 use std::char;
+use std::io::{stdout, Write};
 
+/// This is passed as a single argument to instrinsic functions
 type IntrinsicFnArgs<'a, 'b> = (&'a [u32], &'a mut InterpreterState<'b>);
 
+/// Represents how many args an intrinsic function expects.
+/// If ExpectedArgs::Fixed, the function can take any of the specified argument counts from the slice.
 enum ExpectedArgs {
     Fixed(&'static [usize]),
     VarArg,
 }
 
+/// Represents an intrinsic function.
 struct Intrinsic {
     name: &'static str,
     expected_args: ExpectedArgs,
     f: fn(IntrinsicFnArgs) -> u32,
 }
 
+/// Attempts to execute an intrinsic, returning Some(intrinsic_return) or None if the instrinsic doesnt exist.
+/// Panics if the wrong number of arguments are passed.
 pub fn try_execute_intrinsic(
     name: &str,
     args: &[u32],
@@ -50,10 +57,14 @@ pub fn try_execute_intrinsic(
                 }
                 ExpectedArgs::VarArg => { /*No arg length checking for varargs*/ }
             }
+
             (intrinsic.f)((args, state))
         })
 }
 
+/// Syntactic sugar for instantiating an Intrinsic{..} struct.
+/// `intrinsic!(name, [accepted_arg_count_1, accepted_arg_count_2, ...], argument_binding_pattern => {body})`
+/// alternatively can use `vararg` instead of accepted_arg_count list.
 macro_rules! intrinsic {
     ($name:ident, [ $( $expected_arg:expr ),+ ], $arguments:pat => $fn:block) => {
         Intrinsic {
@@ -71,6 +82,7 @@ macro_rules! intrinsic {
         }
     }
 }
+
 lazy_static! {
     static ref INTRINSICS: &'static [Intrinsic] = &[
         intrinsic!(println, vararg, (args, _) => {
@@ -88,16 +100,21 @@ lazy_static! {
             for arg in args {
                 print!("{}", arg);
             }
+            stdout().flush().unwrap();
             0
         }),
-        intrinsic!(puts, [1], (args, _) => {
-            for arg in args {
-                print!("{}", arg);
+        intrinsic!(puts, [1], (args, state) => {
+            let mut i = args[0] as usize;
+            while state.data[i] != 0 {
+                print!("{}", state.data[i] as char);
+                i += 1;
             }
+            stdout().flush().unwrap();
             0
         }),
         intrinsic!(putc, [1], (args, _) => {
             print!("{}", char::from_u32(args[0]).unwrap());
+            stdout().flush().unwrap();
             0
         }),
         intrinsic!(exit, [0], _ => {
@@ -128,6 +145,10 @@ lazy_static! {
             state.graphics.fill_rect(args[0], args[1], args[2], args[3]);
             0
         }),
+        intrinsic!(line, [4], (args, state) => {
+            state.graphics.line(args[0], args[1], args[2], args[3]);
+            0
+        }),
         intrinsic!(key_pressed, [1], (args, state) => {
             if state.graphics.is_key_pressed(args[0]) {
                 1
@@ -154,9 +175,9 @@ lazy_static! {
             let color = args[3];
             let sprite_data = &state.data[args[0] as usize..(args[0] + (w / 8) * h) as usize];
             state.sprites.create_sprite_mono(sprite_data, w, h, color)
-                }),
-                intrinsic!(sprite, [3], (args, state) => {
-                    state
+        }),
+        intrinsic!(sprite, [3], (args, state) => {
+            state
                 .graphics
                 .sprite(&state.sprites, args[0], args[1], args[2]);
             0

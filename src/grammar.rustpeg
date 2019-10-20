@@ -3,8 +3,13 @@ use crate::util::append_u32;
 
 _ = #quiet<[ \t]*>
 
+
 //any whitespace, but must include at least one newline
-__ = #quiet<[ \t]* ("\n"/":") [ \t\n]*>
+__ = #quiet<[ \t]* (":" / line_separator)+ [ \t\n]*>
+
+line_separator = "\n" / comment
+
+comment = [ \t]* "//" [^\n]* "\n"
 
 
 
@@ -127,10 +132,10 @@ data_zeros -> DataDef<'input> = "zeros" _ n:$([0-9]+)
         DataDef::Bytes(vec![0; n as usize])
     }
 
-data_byte_hex -> u8 = n:$([a-fA-f0-9]*<2>)
+byte_hex -> u8 = n:$([a-fA-f0-9]*<2>)
     { u8::from_str_radix(n, 16).unwrap() }
 
-data_bytes_hex -> DataDef<'input> = "{" _ bytes:(data_byte_hex ** _ ) _ "}"
+data_bytes_hex -> DataDef<'input> = "{" _ bytes:(byte_hex ** _ ) _ "}"
     { DataDef::Bytes(bytes) }
 
 data_u8_dec -> DataDef<'input> = n:$([0-9]+) "b"

@@ -4,12 +4,11 @@ use sdl2::event::Event;
 use sdl2::keyboard::Scancode;
 use sdl2::pixels::{Color, PixelFormat, PixelFormatEnum};
 use sdl2::rect::Rect;
-use sdl2::render::{Canvas, Texture, TextureCreator, TextureQuery, BlendMode};
+use sdl2::render::{BlendMode, Canvas, Texture, TextureCreator, TextureQuery};
 use sdl2::video::{Window, WindowContext};
 use sdl2::{EventPump, TimerSubsystem};
 
 use crate::util::append_u32;
-
 
 //in pixels (defined by PIX_SIZE)
 const SCREEN_WIDTH: u32 = 96;
@@ -18,7 +17,6 @@ const SCREEN_HEIGHT: u32 = 64;
 const PIX_SIZE: u32 = 8;
 
 const PIXEL_FORMAT: PixelFormatEnum = PixelFormatEnum::RGBA8888;
-
 
 /// handles drawing to the screen and imput events
 pub struct Graphics {
@@ -79,7 +77,9 @@ impl Graphics {
     }
 
     pub fn fill_rect(&mut self, x: u32, y: u32, w: u32, h: u32) {
-        self.canvas.fill_rect(Rect::new(x as i32, y as i32, w, h)).unwrap();
+        self.canvas
+            .fill_rect(Rect::new(x as i32, y as i32, w, h))
+            .unwrap();
     }
 
     pub fn poll_events(&mut self) {
@@ -115,6 +115,35 @@ impl Graphics {
     pub fn get_sprite_creator(&self) -> SpriteCreator {
         SpriteCreator(self.canvas.texture_creator())
     }
+
+    /// Uses Bresenham's line algorithm
+    pub fn line(&mut self, x0: u32, y0: u32, x1: u32, y1: u32) {
+        let mut x0 = x0 as i32;
+        let mut y0 = y0 as i32;
+        let x1 = x1 as i32;
+        let y1 = y1 as i32;
+
+        let dx = (x1 - x0).abs();
+        let step_x = if x0 < x1 { 1 } else { -1 };
+        let dy = -(y1 - y0).abs();
+        let step_y = if y0 < y1 { 1 } else { -1 };
+        let mut error = dx + dy;
+        loop {
+            self.pixel(x0 as u32, y0 as u32);
+            if x0 == x1 && y0 == y1 {
+                break;
+            }
+            let error_2 = 2 * error;
+            if error_2 >= dy {
+                error += dy;
+                x0 += step_x
+            }
+            if error_2 <= dx {
+                error += dx;
+                y0 += step_y;
+            }
+        }
+    }
 }
 
 impl<'a> Sprites<'a> {
@@ -126,7 +155,7 @@ impl<'a> Sprites<'a> {
     }
 
     /// Create a monochromatic sprite, where each bit in data represents a pixel.
-    /// Returns the index of the sprite 
+    /// Returns the index of the sprite
     /// (which can be used to identify the sprite when using it in Graphics).
     /// w MUST be a multiple of 8
     pub fn create_sprite_mono(&mut self, data: &[u8], w: u32, h: u32, color: u32) -> u32 {

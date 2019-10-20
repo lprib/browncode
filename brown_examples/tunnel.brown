@@ -1,0 +1,95 @@
+.DATA
+tunnel_offsets:
+zeros 64
+tunnel_widths:
+zeros 64
+
+you_died:
+0b10101110
+0b10100110
+0b01011101
+0b10000000
+
+0b01001010
+0b10100101
+0b01011001
+0b01000000
+
+0b01001110
+0b11100110
+0b01011101
+0b10000000
+
+.CODE
+10 -> current_offset
+80 -> current_width
+0 -> counter
+50 -> player_x
+
+loop:
+draw_color(0)
+clear()
+
+if key_pressed(4):player_x-1->player_x:end
+if key_pressed(7):player_x+1->player_x:end
+
+draw_tunnel()
+if (player_x < b[&tunnel_offsets + 63] | player_x >= b[&tunnel_offsets + 63] + b[&tunnel_widths + 63]) & (counter > 63)
+    goto death_screen
+end
+
+draw_color(0x0000D0FF)
+pixel(player_x, 63)
+
+
+advance_tunnel()
+
+present()
+delay(20)
+poll_events()
+
+goto loop
+
+
+death_screen:
+create_sprite_mono(&you_died, 32, 3, 0xFF0000FF) -> you_died_idx
+draw_color(0)
+clear()
+sprite(you_died_idx, 10, 10)
+present()
+
+death_loop:
+delay(10)
+poll_events()
+goto death_loop
+
+
+func draw_tunnel()
+    for i, 0, 64
+        b[&tunnel_offsets + i] -> offset
+        b[&tunnel_widths + i] -> width
+        draw_color(0xFFFFFFFF)
+        line(offset, i, offset + width, i)
+    end
+end
+
+func advance_tunnel()
+    random_range(0, 3) -> rand
+    if rand = 0 & current_offset > 0:current_offset-1->current_offset:end
+    if rand = 1 & current_offset + current_width < 95:current_offset+1->current_offset:end
+    current_offset -> b[&tunnel_offsets]
+
+    for i, 1, 64
+        64 - i -> j
+        // j = [63, 1]
+        b[&tunnel_offsets + j - 1] -> b[&tunnel_offsets + j]
+        b[&tunnel_widths + j - 1] -> b[&tunnel_widths + j]
+    end
+
+    counter + 1 -> counter
+    if counter % 10 = 0
+        current_width - 1 -> current_width
+    end
+    current_width -> b[&tunnel_widths]
+
+end
