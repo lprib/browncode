@@ -1,6 +1,6 @@
 //! intrinsic functions (standard library)
 
-use super::{error::Error, get_memory_u8, InterpreterResult, InterpreterState};
+use super::{error::Error, InterpreterResult, InterpreterState};
 use lazy_static::lazy_static;
 use rand::Rng;
 use std::char;
@@ -101,8 +101,8 @@ lazy_static! {
         }),
         intrinsic!(puts, [1], (args, state) => {
             let mut i = args[0] as usize;
-            while get_memory_u8(i, &state.data)? != 0 {
-                print!("{}", get_memory_u8(i, &state.data)? as char);
+            while state.get_memory_u8(i)? != 0 {
+                print!("{}", state.get_memory_u8(i)? as char);
                 i += 1;
             }
             flush_stdout()?;
@@ -174,7 +174,7 @@ lazy_static! {
 
             // do the bounds check manually
             if data_end_index >= state.data.len() || data_start_index >= state.data.len() {
-                return Err(Error::U8ReadOutOfBounds {
+                return Err(Error::U8OutOfBounds {
                     u8_read_index: data_end_index,
                     memory_length: state.data.len(),
                 });

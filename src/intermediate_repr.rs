@@ -121,25 +121,10 @@ fn convert_line<'a>(line: Line<'a>, counter: &mut u32) -> IntermediateBlock<'a> 
 /// (increments counter to create the name)
 fn next_label_name<'a, 'b>(counter: &'a mut u32) -> Cow<'b, str> {
     //TODO maybe pass in description for debug puposes (eg. for_start / for_exit)
-    
     //uses `$` because this char is not available in user label names, to avoid collision
     let label_name = format!("$internal_{}", counter);
     *counter += 1;
     Cow::from(label_name)
-}
-
-impl fmt::Debug for IntermediateLine<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            IntermediateLine::Assign(t, e) => write!(f, "{:?} -> {:?}", e, t),
-            IntermediateLine::Goto(l) => write!(f, "goto {}", l),
-            IntermediateLine::Label(l) => write!(f, "{}:", l),
-            IntermediateLine::JumpFalse(e, l) => write!(f, "if not {:?}: goto {}", e, l),
-            IntermediateLine::FunDeclaration(n, a) => write!(f, "func {}{:?}", n, a),
-            IntermediateLine::FunReturn => write!(f, "return"),
-            IntermediateLine::Expr(e) => write!(f, "{:?}", e),
-        }
-    }
 }
 
 /// Flatten data block so all of the data is in a byte vec.
@@ -161,4 +146,29 @@ pub fn convert_data_segment(data: DataBlock<'_>) -> DataSegment<'_> {
     }
 
     (data_vec, map)
+}
+
+impl fmt::Display for IntermediateLine<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            IntermediateLine::Assign(t, e) => write!(f, "{:?} -> {:?}", e, t),
+            IntermediateLine::Goto(l) => write!(f, "goto {}", l),
+            IntermediateLine::Label(l) => write!(f, "{}:", l),
+            IntermediateLine::JumpFalse(e, l) => write!(f, "if not {:?}: goto {}", e, l),
+            IntermediateLine::FunDeclaration(n, a) => write!(f, "func {}{:?}", n, a),
+            IntermediateLine::FunReturn => write!(f, "return"),
+            IntermediateLine::Expr(e) => write!(f, "{:?}", e),
+        }
+    }
+}
+
+pub fn display_intermediate_block(block: &IntermediateBlockSlice) -> String {
+    block
+        .iter()
+        .map(|line| {
+            let mut s = line.to_string();
+            s.push_str("\n");
+            s
+        })
+        .collect()
 }

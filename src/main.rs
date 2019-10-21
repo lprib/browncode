@@ -53,15 +53,14 @@ fn main() -> Result<(), String> {
 
         OutputType::Ir => {
             let ir = intermediate_repr::to_intermediate_repr(ast);
-            println!("{:#?}", ir);
+            println!("{}", intermediate_repr::display_intermediate_block(&ir));
             Ok(())
         }
 
         OutputType::Run => {
             let ir = intermediate_repr::to_intermediate_repr(ast);
             let (data, data_label_table) = intermediate_repr::convert_data_segment(data);
-            let label_table =
-                interpreter::build_label_table(&ir).map_err(|e| format!("{:#?}", e))?;
+            let label_table = interpreter::build_label_table(&ir).map_err(|e| e.to_string())?;
             let program = interpreter::Program {
                 ir,
                 data,
@@ -69,7 +68,7 @@ fn main() -> Result<(), String> {
                 label_table,
             };
 
-            interpreter::execute(&program).map_err(|e| format!("{:#?}", e))?;
+            interpreter::execute(&program).map_err(|e| e.to_string())?;
             Ok(())
         }
     }

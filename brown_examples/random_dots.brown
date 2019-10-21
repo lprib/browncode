@@ -5,6 +5,7 @@
 loop:
 draw_color(0x00000010)
 fill_rect(0, 0, 96, 64)
+putc(0xfffe)
 
 random_range(0, 96) -> x
 random_range(0, 64) -> y
