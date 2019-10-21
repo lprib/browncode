@@ -1,6 +1,6 @@
 //! intrinsic functions (standard library)
 
-use super::InterpreterState;
+use super::{error::Error, get_memory_u8, InterpreterResult, InterpreterState};
 use lazy_static::lazy_static;
 use rand::Rng;
 use std::char;
@@ -20,7 +20,7 @@ enum ExpectedArgs {
 struct Intrinsic {
     name: &'static str,
     expected_args: ExpectedArgs,
-    f: fn(IntrinsicFnArgs) -> u32,
+    f: fn(IntrinsicFnArgs) -> InterpreterResult<u32>,
 }
 
 /// Attempts to execute an intrinsic, returning Some(intrinsic_return) or None if the instrinsic doesnt exist.
@@ -29,7 +29,7 @@ pub fn try_execute_intrinsic(
     name: &str,
     args: &[u32],
     state: &mut InterpreterState,
-) -> Option<u32> {
+) -> Option<InterpreterResult<u32>> {
     INTRINSICS
         .iter()
         // find the intrinsic that matches the name
@@ -46,18 +46,14 @@ pub fn try_execute_intrinsic(
                     arg_lens
                         .iter()
                         .find(|&&arg_len| arg_len == args.len())
-                        .or_else(|| {
-                            panic!(
-                                "{} expects {:?} arguments, {} given",
-                                name,
-                                arg_lens,
-                                args.len()
-                            )
-                        });
+                        .ok_or_else(|| Error::IntrinsicArgumentMismatch {
+                            expected: arg_lens,
+                            got: args.len(),
+                            func_name: name.to_string(),
+                        })?;
                 }
                 ExpectedArgs::VarArg => { /*No arg length checking for varargs*/ }
             }
-
             (intrinsic.f)((args, state))
         })
 }
@@ -88,99 +84,118 @@ lazy_static! {
         intrinsic!(println, vararg, (args, _) => {
             if args.is_empty() {
                 println!();
-                return 0;
+                return Ok(0);
             }
 
             for arg in args {
                 println!("{}", arg);
             }
-            0
+            Ok(0)
         }),
         intrinsic!(print, vararg, (args, _) => {
             for arg in args {
                 print!("{}", arg);
             }
-            stdout().flush().unwrap();
-            0
+            flush_stdout()?;
+            Ok(0)
         }),
         intrinsic!(puts, [1], (args, state) => {
             let mut i = args[0] as usize;
-            while state.data[i] != 0 {
-                print!("{}", state.data[i] as char);
+            while get_memory_u8(i, &state.data)? != 0 {
+                print!("{}", get_memory_u8(i, &state.data)? as char);
                 i += 1;
             }
-            stdout().flush().unwrap();
-            0
+            flush_stdout()?;
+            Ok(0)
         }),
         intrinsic!(putc, [1], (args, _) => {
-            print!("{}", char::from_u32(args[0]).unwrap());
-            stdout().flush().unwrap();
-            0
+            print!("{}", char::from_u32(args[0]).ok_or(Error::InvalidCharacterValue(args[0]))?);
+            flush_stdout()?;
+            Ok(0)
         }),
         intrinsic!(exit, [0], _ => {
             std::process::exit(0)
         }),
 
         intrinsic!(random, [0], _ => {
-            rand::random()
+            Ok(rand::random())
         }),
         intrinsic!(random_range, [2], (args, _) => {
-            rand::thread_rng().gen_range(args[0], args[1])
+            Ok(rand::thread_rng().gen_range(args[0], args[1]))
         }),
 
         intrinsic!(present, [0], (_, state) => {
             state.graphics.present();
-            0
+            Ok(0)
         }),
 
         intrinsic!(draw_color, [1], (args, state) => {
             state.graphics.draw_color(args[0]);
-            0
+            Ok(0)
         }),
         intrinsic!(pixel, [2], (args, state) => {
             state.graphics.pixel(args[0], args[1]);
-            0
+            Ok(0)
         }),
         intrinsic!(fill_rect, [4], (args, state) => {
             state.graphics.fill_rect(args[0], args[1], args[2], args[3]);
-            0
+            Ok(0)
         }),
         intrinsic!(line, [4], (args, state) => {
             state.graphics.line(args[0], args[1], args[2], args[3]);
-            0
+            Ok(0)
         }),
         intrinsic!(key_pressed, [1], (args, state) => {
-            if state.graphics.is_key_pressed(args[0]) {
+            Ok(if state.graphics.is_key_pressed(args[0]) {
                 1
             } else {
                 0
-            }
+            })
         }),
         intrinsic!(clear, [0], (_, state) => {
             state.graphics.clear();
-            0
+            Ok(0)
         }),
         intrinsic!(delay, [1], (args, state) => {
             state.graphics.delay(args[0]);
-            0
+            Ok(0)
         }),
         intrinsic!(poll_events, [0], (_, state) => {
             state.graphics.poll_events();
-            0
+            Ok(0)
         }),
         intrinsic!(create_sprite_mono, [4], (args, state) => {
             // must be a multiple of 8
             let w = args[1];
             let h = args[2];
             let color = args[3];
-            let sprite_data = &state.data[args[0] as usize..(args[0] + (w / 8) * h) as usize];
-            state.sprites.create_sprite_mono(sprite_data, w, h, color)
+            let data_start_index = args[0] as usize;
+            let data_end_index = (args[0] + (w / 8) * h) as usize;
+
+            // do the bounds check manually
+            if data_end_index >= state.data.len() || data_start_index >= state.data.len() {
+                return Err(Error::U8ReadOutOfBounds {
+                    u8_read_index: data_end_index,
+                    memory_length: state.data.len(),
+                });
+            }
+
+            // bounds check has already happened, so we can use get_unchecked
+            let sprite_data = unsafe { &state.data.get_unchecked(data_start_index..data_end_index) };
+            Ok(state.sprites.create_sprite_mono(sprite_data, w, h, color))
         }),
         intrinsic!(sprite, [3], (args, state) => {
             state
                 .graphics
                 .sprite(&state.sprites, args[0], args[1], args[2]);
-            0
+            Ok(0)
         })
     ];
+}
+
+fn flush_stdout() -> InterpreterResult<()> {
+    stdout()
+        .flush()
+        .map_err(|_| Error::System(String::from("Unable to flush stdout")))?;
+    Ok(())
 }
