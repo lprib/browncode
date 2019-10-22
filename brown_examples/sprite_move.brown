@@ -25,28 +25,28 @@ spr:
 loop:
 key_move()
 
-create_sprite_mono(&spr, 8, 8, 0xFF00FFFF)
-create_sprite_mono(&spr + 8, 8, 8, 0xFF)
-if !key_pressed(44)
-    draw_color(0x00000005)
+createmonosprite(&spr, 8, 8, 0xFF00FFFF)
+createmonosprite(&spr + 8, 8, 8, 0xFF)
+if !keypressed(44)
+    drawcolor(0x00000005)
 else
-    draw_color(0xFFFFFF05)
+    drawcolor(0xFFFFFF05)
 end
 
-fill_rect(0, 0, 96, 64)
+fillrect(0, 0, 96, 64)
 sprite(1, x, y)
 sprite(0, x, y)
 present()
 delay(10)
-poll_events()
+pollexit()
 goto loop
 
 savearg func key_move()
-if key_pressed(41):exit():end
-if key_pressed(26):y-1->y:end
-if key_pressed(4):x-1->x:end
-if key_pressed(22):y+1->y:end
-if key_pressed(7):x+1->x:end
+if keypressed(41):exit():end
+if keypressed(26):y-1->y:end
+if keypressed(4):x-1->x:end
+if keypressed(22):y+1->y:end
+if keypressed(7):x+1->x:end
 if x = 1:94->x:end
 if x = 95:1->x:end
 if y = 1:62->y:end

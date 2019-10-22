@@ -82,7 +82,7 @@ impl Graphics {
             .unwrap();
     }
 
-    pub fn poll_events(&mut self) {
+    pub fn poll_exit(&mut self) {
         for e in self.event_pump.poll_iter() {
             if let Event::Quit { .. } = e {
                 std::process::exit(0);

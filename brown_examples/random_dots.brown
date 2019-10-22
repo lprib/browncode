@@ -3,17 +3,17 @@
 
 .CODE
 loop:
-draw_color(0x00000010)
-fill_rect(0, 0, 96, 64)
-putc(0xfffe)
+drawcolor(0x00000010)
+fillrect(0, 0, 96, 64)
+printchar(0xfffe)
 
-random_range(0, 96) -> x
-random_range(0, 64) -> y
+randomrange(0, 96) -> x
+randomrange(0, 64) -> y
 random() -> c
-0xFF->b[&c+3]
-draw_color(c)
-fill_rect(x, y, 4, 4)
-poll_events()
+0xFF->[&c+3]
+drawcolor(c)
+fillrect(x, y, 4, 4)
+pollexit()
 present()
 delay(20)
 goto loop

@@ -309,6 +309,7 @@ impl<'a> InterpreterState<'a> {
         }
     }
 
+    /// Look up all the vars specivied in the params slice and return a map of their name->value (vec of tuples)
     fn save_func_params(&mut self, params: &[&'a str]) -> IResult<Vec<(&'a str, u32)>> {
         params
             .iter()
@@ -319,6 +320,7 @@ impl<'a> InterpreterState<'a> {
             .collect()
     }
 
+    /// For all the specivied var names and values in saved_params, restore the specified name to the specified value
     fn restore_func_params(&mut self, saved_params: &[(&'a str, u32)]) -> IResult<()> {
         for (var_name, value) in saved_params {
             let addr = self.get_var_address(var_name);

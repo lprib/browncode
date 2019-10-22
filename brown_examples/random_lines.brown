@@ -5,18 +5,18 @@
 0 -> prev_x
 0 -> prev_y
 loop:
-draw_color(0x00000010)
-fill_rect(0, 0, 96, 64)
+drawcolor(0x00000010)
+fillrect(0, 0, 96, 64)
 
-random_range(0, 96) -> x
-random_range(0, 64) -> y
+randomrange(0, 96) -> x
+randomrange(0, 64) -> y
 random() -> c
-0xFF->b[&c+3]
-draw_color(c)
+0xFF->[&c+3]
+drawcolor(c)
 line(x, y, prev_x, prev_y)
 x -> prev_x
 y -> prev_y
-poll_events()
+pollexit()
 present()
 delay(100)
 goto loop

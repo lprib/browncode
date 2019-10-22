@@ -81,7 +81,7 @@ macro_rules! intrinsic {
 
 lazy_static! {
     static ref INTRINSICS: &'static [Intrinsic] = &[
-        intrinsic!(println, vararg, (args, _) => {
+        intrinsic!(numprintln, vararg, (args, _) => {
             if args.is_empty() {
                 println!();
                 return Ok(0);
@@ -92,14 +92,14 @@ lazy_static! {
             }
             Ok(0)
         }),
-        intrinsic!(print, vararg, (args, _) => {
+        intrinsic!(numprint, vararg, (args, _) => {
             for arg in args {
                 print!("{}", arg);
             }
             flush_stdout()?;
             Ok(0)
         }),
-        intrinsic!(puts, [1], (args, state) => {
+        intrinsic!(print, [1], (args, state) => {
             let mut i = args[0] as usize;
             while state.get_memory_u8(i)? != 0 {
                 print!("{}", state.get_memory_u8(i)? as char);
@@ -108,7 +108,8 @@ lazy_static! {
             flush_stdout()?;
             Ok(0)
         }),
-        intrinsic!(putc, [1], (args, _) => {
+        //TODO println for strings
+        intrinsic!(printchar, [1], (args, _) => {
             print!("{}", char::from_u32(args[0]).ok_or(Error::InvalidCharacterValue(args[0]))?);
             flush_stdout()?;
             Ok(0)
@@ -120,7 +121,7 @@ lazy_static! {
         intrinsic!(random, [0], _ => {
             Ok(rand::random())
         }),
-        intrinsic!(random_range, [2], (args, _) => {
+        intrinsic!(randomrange, [2], (args, _) => {
             Ok(rand::thread_rng().gen_range(args[0], args[1]))
         }),
 
@@ -129,7 +130,7 @@ lazy_static! {
             Ok(0)
         }),
 
-        intrinsic!(draw_color, [1], (args, state) => {
+        intrinsic!(drawcolor, [1], (args, state) => {
             state.graphics.draw_color(args[0]);
             Ok(0)
         }),
@@ -137,7 +138,7 @@ lazy_static! {
             state.graphics.pixel(args[0], args[1]);
             Ok(0)
         }),
-        intrinsic!(fill_rect, [4], (args, state) => {
+        intrinsic!(fillrect, [4], (args, state) => {
             state.graphics.fill_rect(args[0], args[1], args[2], args[3]);
             Ok(0)
         }),
@@ -145,7 +146,7 @@ lazy_static! {
             state.graphics.line(args[0], args[1], args[2], args[3]);
             Ok(0)
         }),
-        intrinsic!(key_pressed, [1], (args, state) => {
+        intrinsic!(keypressed, [1], (args, state) => {
             Ok(if state.graphics.is_key_pressed(args[0]) {
                 1
             } else {
@@ -160,11 +161,11 @@ lazy_static! {
             state.graphics.delay(args[0]);
             Ok(0)
         }),
-        intrinsic!(poll_events, [0], (_, state) => {
-            state.graphics.poll_events();
+        intrinsic!(pollexit, [0], (_, state) => {
+            state.graphics.poll_exit();
             Ok(0)
         }),
-        intrinsic!(create_sprite_mono, [4], (args, state) => {
+        intrinsic!(createmonosprite, [4], (args, state) => {
             // must be a multiple of 8
             let w = args[1];
             let h = args[2];

@@ -19,17 +19,17 @@ mult:
 .CODE
 256 / mult -> color_mult
 start:
-draw_color(0x000000FF)
+drawcolor(0x000000FF)
 clear()
-draw_color(0xFFFFFFFF)
+drawcolor(0xFFFFFFFF)
 for y, 0, 5
-    b[&swa2 + y] -> row
+    [&swa2 + y] -> row
     for x, 0, 5
         (row >> x) & 1 -> p
         if p
             for x1, 0, mult
             for y1, 0, mult
-                draw_color((x1 * color_mult) << 24 | (y1 * color_mult) << 16 | 0xFF)
+                drawcolor((x1 * color_mult) << 24 | (y1 * color_mult) << 16 | 0xFF)
                 pixel((4 - x) * mult + x1, y*mult + y1)
             end
             end
@@ -38,15 +38,15 @@ for y, 0, 5
 end
 
 present()
-draw_color(0xFFFFFFFF)
+drawcolor(0xFFFFFFFF)
 pixel(95, 63)
 present()
 
 loop1:
-if key_pressed(4)
+if keypressed(4)
     goto breakout
 end
-poll_events()
+pollexit()
 goto loop1
 breakout:
 
@@ -54,25 +54,25 @@ for y, 0, 64
     y * 2 -> m
     for x, 0, 96
         (x * 2) -> n
-        draw_color(m << 24 | n << 8 | n << 16 | 0x000000FF)
+        drawcolor(m << 24 | n << 8 | n << 16 | 0x000000FF)
         pixel(x, y)
-        poll_events()
+        pollexit()
     end
 end
 
 present()
-draw_color(0xFFFFFFFF)
+drawcolor(0xFFFFFFFF)
 pixel(95, 63)
 present()
 
 loop2:
-if key_pressed(5)
+if keypressed(5)
     goto breakout2
 end
-poll_events()
+pollexit()
 goto loop2
 breakout2:
 
-poll_events()
+pollexit()
 
 goto start

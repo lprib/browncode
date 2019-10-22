@@ -29,10 +29,10 @@ binary -> Expr<'input> = "0b" n:$([0-1]+)
 
 number_literal -> Expr<'input> = binary / hex / decimal
 
-deref -> Expr<'input> = "[" _ e:expression _ "]" 
+deref -> Expr<'input> = "{" _ e:expression _ "}" 
     { Expr::Deref(Box::new(e)) }
 
-deref_byte -> Expr<'input> = "b[" _ e:expression _ "]"
+deref_byte -> Expr<'input> = "[" _ e:expression _ "]"
     { Expr::DerefByte(Box::new(e)) }
 
 var -> Expr<'input> = i:ident
@@ -82,10 +82,10 @@ line -> LineData<'input> = assign / fun_declaration / label / for_loop / while_l
 assign_target_var -> AssignTarget<'input> = i:ident
     { AssignTarget::Var(i) }
 
-assign_target_addr -> AssignTarget<'input> = "[" _ e:expression _ "]"
+assign_target_addr -> AssignTarget<'input> = "{" _ e:expression _ "}"
     { AssignTarget::Addr(e) }
 
-assign_target_byte_addr -> AssignTarget<'input> = "b[" _ e:expression _ "]"
+assign_target_byte_addr -> AssignTarget<'input> = "[" _ e:expression _ "]"
     { AssignTarget::ByteAddr(e) }
 
 assign_target -> AssignTarget<'input> = assign_target_byte_addr / assign_target_var / assign_target_addr

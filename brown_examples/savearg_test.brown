@@ -1,7 +1,7 @@
 .DATA
 0
 .CODE
-println(fact(15))
+numprintln(fact(15))
 
 
 savearg func fact(n)
