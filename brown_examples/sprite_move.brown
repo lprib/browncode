@@ -41,7 +41,7 @@ delay(10)
 poll_events()
 goto loop
 
-func key_move()
+savearg func key_move()
 if key_pressed(41):exit():end
 if key_pressed(26):y-1->y:end
 if key_pressed(4):x-1->x:end

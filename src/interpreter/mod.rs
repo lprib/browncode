@@ -12,7 +12,8 @@ mod error;
 mod intrinsics;
 mod state;
 
-type InterpreterResult<T> = Result<T, Error>;
+/// Used for results within the interpreter, which all use E: interpreter::error::Error
+type IResult<T> = Result<T, Error>;
 
 /// The immutable program data that is run by the interpreter
 pub struct Program<'a> {
@@ -24,7 +25,7 @@ pub struct Program<'a> {
     pub data_label_table: HashMap<&'a str, usize>,
 }
 
-pub fn execute<'a>(program: &Program<'a>) -> InterpreterResult<()> {
+pub fn execute<'a>(program: &Program<'a>) -> IResult<()> {
     // TODO take ownership of program so clones are not needed?
     let graphics = Graphics::try_new().map_err(Error::Graphics)?;
     let sprite_creator = &graphics.get_sprite_creator();
@@ -48,12 +49,12 @@ pub fn execute<'a>(program: &Program<'a>) -> InterpreterResult<()> {
 /// Iterates over a program and returns the mapping from labels to the line index the label points to
 pub fn build_label_table<'a>(
     program: &IntermediateBlockSlice<'a>,
-) -> InterpreterResult<HashMap<Cow<'a, str>, usize>> {
+) -> IResult<HashMap<Cow<'a, str>, usize>> {
     let mut map = HashMap::new();
     for (i, line) in program.iter().enumerate() {
         // fun declarations are essentially labels, so add them to the map as well
         // NOTE this means there can be name conflicts between fun names and label names
-        if let IntermediateLine::Label(name) | IntermediateLine::FunDeclaration(name, _) = line {
+        if let IntermediateLine::Label(name) | IntermediateLine::FunDeclaration(name, ..) = line {
             if map.contains_key(name) {
                 // panic!("label {} is defined more than once", name);
                 return Err(Error::LabelRedefinition(name.to_string()));

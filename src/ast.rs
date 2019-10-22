@@ -54,7 +54,8 @@ pub enum Line<'a> {
     If(Expr<'a>, Block<'a>, Option<Block<'a>>),
     Goto(&'a str),
     Label(&'a str),
-    FunDeclaration(&'a str, Vec<&'a str>, Block<'a>),
+    // name, arg names, is_saveargs
+    FunDeclaration(&'a str, Vec<&'a str>, Block<'a>, bool),
     // at the moment, the Line::Expr can only be a Expr::FunCall, otherwise
     // ambiguity arises (eg. 'end' getting parsed as Expr::Var("end") instead
     // of the end of a block)

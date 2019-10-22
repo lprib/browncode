@@ -18,9 +18,9 @@ pub enum IntermediateLine<'a> {
     Assign(AssignTarget<'a>, Expr<'a>),
     Goto(Cow<'a, str>),
     Label(Cow<'a, str>),
-    //TODO is this needed?
     JumpFalse(Expr<'a>, Cow<'a, str>),
-    FunDeclaration(Cow<'a, str>, Vec<&'a str>),
+    // name, args, is_saveargs
+    FunDeclaration(Cow<'a, str>, Vec<&'a str>, bool),
     FunReturn,
     Expr(Expr<'a>),
 }
@@ -106,8 +106,12 @@ fn convert_line<'a>(line: Line<'a>, counter: &mut u32) -> IntermediateBlock<'a> 
             block.push(IntermediateLine::Label(exit_label));
         }
 
-        Line::FunDeclaration(name, args, body) => {
-            block.push(IntermediateLine::FunDeclaration(Cow::from(name), args));
+        Line::FunDeclaration(name, args, body, is_saveargs) => {
+            block.push(IntermediateLine::FunDeclaration(
+                Cow::from(name),
+                args,
+                is_saveargs,
+            ));
             block.extend(convert_block(body, counter));
             block.push(IntermediateLine::FunReturn);
         }
@@ -155,7 +159,9 @@ impl fmt::Display for IntermediateLine<'_> {
             IntermediateLine::Goto(l) => write!(f, "goto {}", l),
             IntermediateLine::Label(l) => write!(f, "{}:", l),
             IntermediateLine::JumpFalse(e, l) => write!(f, "if not {:?}: goto {}", e, l),
-            IntermediateLine::FunDeclaration(n, a) => write!(f, "func {}{:?}", n, a),
+            IntermediateLine::FunDeclaration(n, a, s) => {
+                write!(f, "{}func {}{:?}", if *s { "saveargs " } else { "" }, n, a)
+            }
             IntermediateLine::FunReturn => write!(f, "return"),
             IntermediateLine::Expr(e) => write!(f, "{:?}", e),
         }

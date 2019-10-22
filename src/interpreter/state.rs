@@ -2,7 +2,7 @@
 
 use super::error::Error;
 use super::intrinsics::try_execute_intrinsic;
-use super::{InterpreterResult, Program};
+use super::{IResult, Program};
 use crate::ast::{AssignTarget, Expr};
 use crate::graphics::{Graphics, Sprites};
 use crate::intermediate_repr::IntermediateLine;
@@ -28,7 +28,7 @@ impl<'a> InterpreterState<'a> {
     /// Note, this may actually execute several lines because function calls
     /// in the current line will jump to the function definition and fully execute
     /// before returning to the current line.
-    pub fn execute_line(&mut self, program: &Program<'a>) -> InterpreterResult<()> {
+    pub fn execute_line(&mut self, program: &Program<'a>) -> IResult<()> {
         let line = &program.ir[self.instr_index];
         use IntermediateLine::*;
 
@@ -82,7 +82,7 @@ impl<'a> InterpreterState<'a> {
 
     /// Evaluate expression and return its result as u32
     /// Note, this will run any functions called in the expr and obtain their result
-    fn evaluate_expr(&mut self, expr: &Expr<'a>, program: &Program<'a>) -> InterpreterResult<u32> {
+    fn evaluate_expr(&mut self, expr: &Expr<'a>, program: &Program<'a>) -> IResult<u32> {
         use Expr::*;
         // TODO macro for this?
         match expr {
@@ -139,7 +139,7 @@ impl<'a> InterpreterState<'a> {
         right: &Expr<'a>,
         program: &Program<'a>,
         operation: F,
-    ) -> InterpreterResult<u32>
+    ) -> IResult<u32>
     where
         F: Fn(u32, u32) -> u32,
     {
@@ -155,7 +155,7 @@ impl<'a> InterpreterState<'a> {
         right: &Expr<'a>,
         program: &Program<'a>,
         operation: F,
-    ) -> InterpreterResult<u32>
+    ) -> IResult<u32>
     where
         F: Fn(u32, u32) -> bool,
     {
@@ -176,7 +176,7 @@ impl<'a> InterpreterState<'a> {
         name: &str,
         args: &[u32],
         program: &Program<'a>,
-    ) -> InterpreterResult<u32> {
+    ) -> IResult<u32> {
         try_execute_intrinsic(name, args, self).unwrap_or_else(|| {
             //try_execute_intrinsic return false, so search for a user function of the specified name
 
@@ -188,7 +188,9 @@ impl<'a> InterpreterState<'a> {
                 .get(name)
                 .ok_or_else(|| Error::FunctionNotFound(name.to_string()))?;
 
-            if let IntermediateLine::FunDeclaration(_, params) = &program.ir[self.instr_index] {
+            if let IntermediateLine::FunDeclaration(_, params, is_savearg) =
+                &program.ir[self.instr_index]
+            {
                 if params.len() != args.len() {
                     return Err(Error::ArgumentMismatch {
                         expected: params.len(),
@@ -196,6 +198,12 @@ impl<'a> InterpreterState<'a> {
                         func_name: name.to_string(),
                     });
                 }
+
+                let saved_args = if *is_savearg {
+                    Some(self.save_func_params(params)?)
+                } else {
+                    None
+                };
 
                 for (index, param) in params.iter().enumerate() {
                     let addr = self.get_var_address(param);
@@ -210,6 +218,11 @@ impl<'a> InterpreterState<'a> {
                     self.execute_line(program)?;
                 }
 
+                match saved_args {
+                    Some(saved_args) => self.restore_func_params(&saved_args)?,
+                    None => {}
+                };
+
                 self.instr_index = return_instr_index;
                 self.get_var_value("ans")
             } else {
@@ -220,7 +233,7 @@ impl<'a> InterpreterState<'a> {
     }
 
     /// Access a u32 at the specified *byte* index. Error on out of bounds.
-    fn get_memory_u32(&self, index: usize) -> InterpreterResult<u32> {
+    fn get_memory_u32(&self, index: usize) -> IResult<u32> {
         if index + 3 >= self.data.len() {
             Err(Error::U32OutOfBounds {
                 u32_read_index: index,
@@ -235,7 +248,7 @@ impl<'a> InterpreterState<'a> {
     }
 
     /// Set the 4 bytes at the specified *byte* index to the value, big endian. Error on out of bounds.
-    fn set_memory_u32(&mut self, index: usize, value: u32) -> InterpreterResult<()> {
+    fn set_memory_u32(&mut self, index: usize, value: u32) -> IResult<()> {
         if index + 3 >= self.data.len() {
             Err(Error::U32OutOfBounds {
                 u32_read_index: index,
@@ -251,7 +264,7 @@ impl<'a> InterpreterState<'a> {
     }
 
     /// Get byte of memory at the specified index. Error on out of bounds.
-    pub fn get_memory_u8(&self, index: usize) -> InterpreterResult<u8> {
+    pub fn get_memory_u8(&self, index: usize) -> IResult<u8> {
         self.data.get(index).copied().ok_or(Error::U8OutOfBounds {
             u8_read_index: index,
             memory_length: self.data.len(),
@@ -259,7 +272,7 @@ impl<'a> InterpreterState<'a> {
     }
 
     /// Set byte of memory at index to the given value. Error on out of bounds.
-    fn set_memory_u8(&mut self, index: usize, value: u8) -> InterpreterResult<()> {
+    fn set_memory_u8(&mut self, index: usize, value: u8) -> IResult<()> {
         if index < self.data.len() {
             self.data[index] = value;
             Ok(())
@@ -271,8 +284,10 @@ impl<'a> InterpreterState<'a> {
         }
     }
 
-    /// Returns value of var based on data vec and var table
-    fn get_var_value(&mut self, name: &'a str) -> InterpreterResult<u32> {
+    /// Returns value of var based on data vec and var table.
+    /// As with get_var_addres, it allocates space for a variable and
+    /// returns the alloc'd space if the var doesn't exist
+    fn get_var_value(&mut self, name: &'a str) -> IResult<u32> {
         let addr = self.get_var_address(name);
         self.get_memory_u32(addr)
     }
@@ -292,5 +307,23 @@ impl<'a> InterpreterState<'a> {
             self.data.push(0);
             next_addr_in_data
         }
+    }
+
+    fn save_func_params(&mut self, params: &[&'a str]) -> IResult<Vec<(&'a str, u32)>> {
+        params
+            .iter()
+            .map(|param| {
+                self.get_var_value(param)
+                    .map(|param_value_ok| (*param, param_value_ok))
+            })
+            .collect()
+    }
+
+    fn restore_func_params(&mut self, saved_params: &[(&'a str, u32)]) -> IResult<()> {
+        for (var_name, value) in saved_params {
+            let addr = self.get_var_address(var_name);
+            self.set_memory_u32(addr, *value)?;
+        }
+        Ok(())
     }
 }

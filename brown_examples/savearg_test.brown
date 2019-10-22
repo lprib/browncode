@@ -1,0 +1,13 @@
+.DATA
+0
+.CODE
+println(fact(15))
+
+
+savearg func fact(n)
+    if n <= 1
+        1 -> ans
+    else
+        n*fact(n-1) -> ans
+    end
+end

@@ -1,6 +1,6 @@
 //! intrinsic functions (standard library)
 
-use super::{error::Error, InterpreterResult, InterpreterState};
+use super::{error::Error, IResult, InterpreterState};
 use lazy_static::lazy_static;
 use rand::Rng;
 use std::char;
@@ -20,7 +20,7 @@ enum ExpectedArgs {
 struct Intrinsic {
     name: &'static str,
     expected_args: ExpectedArgs,
-    f: fn(IntrinsicFnArgs) -> InterpreterResult<u32>,
+    f: fn(IntrinsicFnArgs) -> IResult<u32>,
 }
 
 /// Attempts to execute an intrinsic, returning Some(intrinsic_return) or None if the instrinsic doesnt exist.
@@ -29,7 +29,7 @@ pub fn try_execute_intrinsic(
     name: &str,
     args: &[u32],
     state: &mut InterpreterState,
-) -> Option<InterpreterResult<u32>> {
+) -> Option<IResult<u32>> {
     INTRINSICS
         .iter()
         // find the intrinsic that matches the name
@@ -193,7 +193,7 @@ lazy_static! {
     ];
 }
 
-fn flush_stdout() -> InterpreterResult<()> {
+fn flush_stdout() -> IResult<()> {
     stdout()
         .flush()
         .map_err(|_| Error::System(String::from("Unable to flush stdout")))?;

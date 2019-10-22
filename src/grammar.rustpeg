@@ -118,8 +118,8 @@ label -> LineData<'input> = p:#position n:ident _ ":"
 fun_arg -> &'input str = _ i:ident _
     { i }
 
-fun_declaration -> LineData<'input> = p:#position "func" _ i:ident _ "(" args:(fun_arg ** ",") ")" __ l:lines __ "end"
-    { (p, Line::FunDeclaration(i, args, l)).into() }
+fun_declaration -> LineData<'input> = p:#position savearg:(("savearg" _)?) "func" _ i:ident _ "(" args:(fun_arg ** ",") ")" __ l:lines __ "end"
+    { (p, Line::FunDeclaration(i, args, l, savearg.is_some())).into() }
 
 expr_line -> LineData<'input> = p:#position e:fun_call
     { (p, Line::Expr(e)).into() }
@@ -163,5 +163,7 @@ data_segment -> DataBlock<'input> = block:(data_line ** __)
     { block }
 
 
-pub program -> (DataBlock<'input>, Block<'input>) = ".DATA" __ data:data_segment __ ".CODE"  __ l:lines
+maybe_shebang = ("#!" [^\n]* "\n" [ \t\n]*)?
+
+pub program -> (DataBlock<'input>, Block<'input>) = maybe_shebang ".DATA" __ data:data_segment __ ".CODE"  __ l:lines
     { (data, l) }
