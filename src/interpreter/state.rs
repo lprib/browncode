@@ -218,9 +218,8 @@ impl<'a> InterpreterState<'a> {
                     self.execute_line(program)?;
                 }
 
-                match saved_args {
-                    Some(saved_args) => self.restore_func_params(&saved_args)?,
-                    None => {}
+                if let Some(saved_args) = saved_args {
+                    self.restore_func_params(&saved_args)?
                 };
 
                 self.instr_index = return_instr_index;
@@ -240,10 +239,12 @@ impl<'a> InterpreterState<'a> {
                 memory_length: self.data.len(),
             })
         } else {
-            Ok(u32::from(self.data[index]) << 24
-                | u32::from(self.data[index + 1]) << 16
-                | u32::from(self.data[index + 2]) << 8
-                | u32::from(self.data[index + 3]))
+            Ok(u32::from_le_bytes([
+                self.data[index],
+                self.data[index + 1],
+                self.data[index + 2],
+                self.data[index + 3],
+            ]))
         }
     }
 
@@ -255,10 +256,11 @@ impl<'a> InterpreterState<'a> {
                 memory_length: self.data.len(),
             })
         } else {
-            self.data[index] = (value >> 24 & 0xFF) as u8;
-            self.data[index + 1] = (value >> 16 & 0xFF) as u8;
-            self.data[index + 2] = (value >> 8 & 0xFF) as u8;
-            self.data[index + 3] = (value & 0xFF) as u8;
+            let bytes = value.to_le_bytes();
+            self.data[index] = bytes[0];
+            self.data[index + 1] = bytes[1];
+            self.data[index + 2] = bytes[2];
+            self.data[index + 3] = bytes[3];
             Ok(())
         }
     }

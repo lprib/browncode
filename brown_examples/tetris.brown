@@ -1,0 +1,53 @@
+.DATA
+block_sprite_data:
+0b11110000
+0b10010000
+0b10010000
+0b11110000
+
+//ORDER: IOTSZJL
+colors:
+0x33ccffff;0xffff66ff
+0xcc33ffff;0x33cc33ff
+0xff3300ff;0x6600ffff
+0xff6600ff
+
+tetromino_layouts:
+{0000010002000300}
+{0000010000010101}
+{0100000101010201}
+{0100020000010101}
+{0000010001010201}
+{0000000101010201}
+{0200000101010201}
+
+.CODE
+initialize_sprites()
+
+0 -> index
+
+main_loop:
+drawcolor(0)
+clear()
+if keypressed(4);index + 1 -> index;end
+if keypressed(5);index - 1 -> index;end
+draw_tetromino(index, 30, 30)
+present()
+delay(50)
+pollexit()
+goto main_loop
+
+func initialize_sprites()
+    for i, 0, 7
+        createmonosprite(&block_sprite_data, 8, 4, {&colors + i * 4})
+    end
+end
+
+savearg func draw_tetromino(tet_index, x, y)
+    for tet_block_iter, 0, 4
+        &tetromino_layouts + tet_index * 8 + tet_block_iter * 2 -> x_offset_addr
+        [x_offset_addr] -> tet_x_offset
+        [x_offset_addr + 1] -> tet_y_offset
+        sprite(tet_index, x + tet_x_offset * 4, y + tet_y_offset * 4)
+    end
+end

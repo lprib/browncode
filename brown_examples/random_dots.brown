@@ -10,7 +10,7 @@ printchar(0xfffe)
 randomrange(0, 96) -> x
 randomrange(0, 64) -> y
 random() -> c
-0xFF->[&c+3]
+0xFF->[&c]
 drawcolor(c)
 fillrect(x, y, 4, 4)
 pollexit()

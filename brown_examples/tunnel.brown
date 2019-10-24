@@ -30,8 +30,8 @@ loop:
 drawcolor(0)
 clear()
 
-if keypressed(4):player_x-1->player_x:end
-if keypressed(7):player_x+1->player_x:end
+if keypressed(4);player_x-1->player_x;end
+if keypressed(7);player_x+1->player_x;end
 
 draw_tunnel()
 if (player_x < [&tunnel_offsets + 63] | player_x >= [&tunnel_offsets + 63] + [&tunnel_widths + 63]) & (counter > 63)
@@ -75,8 +75,8 @@ end
 
 func advance_tunnel()
     randomrange(0, 3) -> rand
-    if rand = 0 & current_offset > 0:current_offset-1->current_offset:end
-    if rand = 1 & current_offset + current_width < 95:current_offset+1->current_offset:end
+    if rand = 0 & current_offset > 0;current_offset-1->current_offset;end
+    if rand = 1 & current_offset + current_width < 95;current_offset+1->current_offset;end
     current_offset -> [&tunnel_offsets]
 
     for i, 1, 64

@@ -25,7 +25,7 @@ spr:
 loop:
 key_move()
 
-createmonosprite(&spr, 8, 8, 0xFF00FFFF)
+createmonosprite(&spr, 8, 8, 0x00FF00FF)
 createmonosprite(&spr + 8, 8, 8, 0xFF)
 if !keypressed(44)
     drawcolor(0x00000005)
@@ -42,13 +42,13 @@ pollexit()
 goto loop
 
 savearg func key_move()
-if keypressed(41):exit():end
-if keypressed(26):y-1->y:end
-if keypressed(4):x-1->x:end
-if keypressed(22):y+1->y:end
-if keypressed(7):x+1->x:end
-if x = 1:94->x:end
-if x = 95:1->x:end
-if y = 1:62->y:end
-if y = 63:1->y:end
+if keypressed(41);exit();end
+if keypressed(26);y-1->y;end
+if keypressed(4);x-1->x;end
+if keypressed(22);y+1->y;end
+if keypressed(7);x+1->x;end
+if x = 1;94->x;end
+if x = 95;1->x;end
+if y = 1;62->y;end
+if y = 63;1->y;end
 end

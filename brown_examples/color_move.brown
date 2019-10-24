@@ -3,10 +3,10 @@
 .DATA
 str:
 "hello"
-0
+0.
 
 tail_len:
-256
+0x100
 
 tail:
 zeros 512
@@ -17,17 +17,17 @@ zeros 512
 256 / tail_len -> color_mult
 
 loop:
-if keypressed(41):exit():end
-if keypressed(26):y-1->y:end
-if keypressed(4):x-1->x:end
-if keypressed(22):y+1->y:end
-if keypressed(7):x+1->x:end
-if x = 1:94->x:end
-if x = 95:1->x:end
-if y = 1:62->y:end
-if y = 63:1->y:end
+if keypressed(41);exit();end
+if keypressed(26);y-1->y;end
+if keypressed(4);x-1->x;end
+if keypressed(22);y+1->y;end
+if keypressed(7);x+1->x;end
+if x = 1;94->x;end
+if x = 95;1->x;end
+if y = 1;62->y;end
+if y = 63;1->y;end
 
-if keypressed(44):print(&str):end
+if keypressed(44);print(&str);end
 
 for i, 1, tail_len
     [&tail + i*2] -> [&tail + i*2 - 2]

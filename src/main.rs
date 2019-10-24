@@ -19,6 +19,7 @@ arg_enum! {
     enum OutputType {
         Ast,
         PrettyAst,
+        DataAst,
         Ir,
         Run
     }
@@ -48,6 +49,11 @@ fn main() -> Result<(), String> {
 
         OutputType::PrettyAst => {
             println!("{:#?}", ast);
+            Ok(())
+        }
+
+        OutputType::DataAst => {
+            println!("{:#?}", data);
             Ok(())
         }
 

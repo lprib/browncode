@@ -5,7 +5,7 @@ _ = #quiet<[ \t]*>
 
 
 //any whitespace, but must include at least one newline
-__ = #quiet<[ \t]* (":" / line_separator)+ [ \t\n]*>
+__ = #quiet<[ \t]* (";" / line_separator)+ [ \t\n]*>
 
 line_separator = "\n" / comment
 
@@ -138,7 +138,7 @@ byte_hex -> u8 = n:$([a-fA-f0-9]*<2>)
 data_bytes_hex -> DataDef<'input> = "{" _ bytes:(byte_hex ** _ ) _ "}"
     { DataDef::Bytes(bytes) }
 
-data_u8_dec -> DataDef<'input> = n:$([0-9]+) "b"
+data_u8_dec -> DataDef<'input> = n:$([0-9]+) "."
     { DataDef::Bytes(vec![n.parse::<u8>().unwrap(); 1]) }
 
 data_u8_bin -> DataDef<'input> = "0b" n:$([0-1]+)
@@ -151,13 +151,20 @@ data_u32_dec -> DataDef<'input> = n:$([0-9]+)
         DataDef::Bytes(v)
     }
 
+data_u32_hex -> DataDef<'input> = "0x" n:$([a-fA-F0-9]+)
+    {
+        let mut v = Vec::new();
+        append_u32(&mut v, u32::from_str_radix(n, 16).unwrap());
+        DataDef::Bytes(v)
+    }
+
 data_label -> DataDef<'input> = n:ident _ ":"
     { DataDef::Label(n) }
 
 data_string -> DataDef<'input> = "\"" string:$(.[^"]*) "\""
     { DataDef::Bytes(string.as_bytes().to_vec()) }
 
-data_line -> DataDef<'input> = data_u8_bin / data_u8_dec / data_zeros / data_bytes_hex / data_label / data_string / data_u32_dec
+data_line -> DataDef<'input> = data_u8_bin / data_u8_dec / data_zeros / data_bytes_hex / data_label / data_string / data_u32_hex / data_u32_dec
 
 data_segment -> DataBlock<'input> = block:(data_line ** __)
     { block }

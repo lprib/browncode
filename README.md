@@ -27,10 +27,11 @@ Syntax | Description
 `zeros 5` | Insert 5 zeros
 `{05FF}` | Insert the bytes 0x05 and 0xFF
 `{HEX}` | Insert a byte for every 2 hex characters (must be an even number of characters)
-`b230` | Insert the unsigned decimal byte 230
-`503282` | Insert the unsigned 32 bit number 503282
-`0b01101111` | Insert the binary byte `0110 1111`
-`"hello"` | Insert the UTF-8 string. Not null terminated, you must add a `b0` after to null terminate
+`230.` | Insert the unsigned decimal byte 230
+`503282` | Insert the unsigned 32 bit number 503282, little endian
+`0xFFEA` | Insert the unsigned 32 bit hex number, little endian
+`0b01101111` | Insert the binary **byte** `0110 1111`
+`"hello"` | Insert the UTF-8 string. Not null terminated, you must add a `0.` after to null terminate
 
 Like code, data lines must either be separated by newline(s), or a colon.
 
@@ -41,7 +42,7 @@ Syntax | Description
 `234` | Decimal number
 `0x23FA6E00` | Hex number
 `0b1100` | Binary number (up to 32 digits)
-`{EXPR}` | The value of the data segment at address EXPR (big endian bytewise addresssing)
+`{EXPR}` | The value of the data segment at address EXPR (little endian bytewise addresssing)
 `[EXPR]` | The 8 bit value at address EXPR, auto extended to 32 bits
 `&var` | The address of `var`
 `!EXPR` | Logical inversion of EXPR. (EXPR != 0 is true, EXPR = 0 is false)
@@ -50,7 +51,7 @@ Syntax | Description
 `FUNC(ARG, ARG)` | Calls FUNC with ARGs (may be any number, including 0, args), evaluates to the function's return
 
 #### Control Flow / Top Level Syntax
-The syntax is generally line based, but `:` is interpreted as a newline. Except for newlines/`:`, it is whitespace independent (indentation tabs/spaces do not matter).
+The syntax is generally line based, but `;` is interpreted as a newline. Except for newlines/`;`, it is whitespace independent (indentation tabs/spaces do not matter).
 
 Eg.
 ```
@@ -62,7 +63,7 @@ end
 ```
 is equivalent to
 ```
-if a:function(b):else:function(c):end
+if a;function(b);else;function(c);end
 ```
 Syntax | Description
 --- | ---
@@ -70,15 +71,15 @@ Syntax | Description
 `EXPR -> VAR` | store result of EXPR into VAR
 `EXPR1 -> [EXPR2]` | truncate EXPR1 into an 8 bit value, and store it into the single byte where EXPR2 points
 `EXPR1 -> {EXPR2}` | store the result of EXPR1 into the 32 bits where EXPR2 points (big endian)
-`for VAR, EXPR1, EXPR2:CODE:end` | loop over CODE, incrementing VAR. Start with VAR = EXPR1, end with VAR = EXPR2 - 1. VAR in [EXPR1, EXPR2)
-`while EXPR:CODE:end` | loop over CODE while EXPR is non-zero
-`if EXPR:CODE:end` | only execute CODE if EXPR is non-zero
-`if EXPR:CODE:else:CODE:end` | execute first block if EXPR is non-zero, otherwise execute second block of code
+`for VAR, EXPR1, EXPR2;CODE;end` | loop over CODE, incrementing VAR. Start with VAR = EXPR1, end with VAR = EXPR2 - 1. VAR in [EXPR1, EXPR2)
+`while EXPR;CODE;end` | loop over CODE while EXPR is non-zero
+`if EXPR;CODE;end` | only execute CODE if EXPR is non-zero
+`if EXPR;CODE;else;CODE;end` | execute first block if EXPR is non-zero, otherwise execute second block of code
 `LABEL:` | introduce LABEL that points to the following line of code
 `goto LABEL` | unconditionally jump to LABEL in the code
 `NAME(ARG, ARG)` | calls the function NAME with args, discarding the result
-`func NAME(ARG, ARG):CODE:end` | define function NAME, which takes the args given. Args must be names, not expressions.
-`savearg func NAME(ARG, ARG):CODE:end` | define a function NAME, which takes the args given. (see below)
+`func NAME(ARG, ARG);CODE;end` | define function NAME, which takes the args given. Args must be names, not expressions.
+`savearg func NAME(ARG, ARG);CODE;end` | define a function NAME, which takes the args given. (see below)
 #### Functions
 Functions take arguments, and return a single result. The result is returned by setting a variable named `ans`. Whatever value `ans` has when the function returns will be the return value. Early returns are possible through labels and gotos.
 
@@ -115,3 +116,4 @@ Intrinsic | Description
 `delay(ms)` | pauses for specified amount of milliseconds
 `pollexit()` | checks if the window was closed by the user, and exits if it has. You should call this periodically if you want the window to be closeable.
 `createmonosprite(ptr, w, h, color)` | creates a monochromatic sprite of given width and height. The bitwise data at pointer describes the sprite data (1 = specified color, 0 = transparent). Width must be a multiple of 8. Returns a sprite index which can be used to refer to this sprite when drawing it. NOTE index is always incremented by 1 between succesive calls, so this can be called in a loop while only storing the first index.
+`sprite(index, x, y)` | Draws the sprite from the given index at x and y

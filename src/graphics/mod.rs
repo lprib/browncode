@@ -157,7 +157,7 @@ impl<'a> Sprites<'a> {
     /// Create a monochromatic sprite, where each bit in data represents a pixel.
     /// Returns the index of the sprite
     /// (which can be used to identify the sprite when using it in Graphics).
-    /// w MUST be a multiple of 8
+    /// w MUST be a multiple of 8 (TODO assert)
     pub fn create_sprite_mono(&mut self, data: &[u8], w: u32, h: u32, color: u32) -> u32 {
         let mut tex = self
             .sprite_creator
@@ -169,10 +169,7 @@ impl<'a> Sprites<'a> {
         for byte in data {
             for bit_index in (0..8).rev() {
                 if (byte >> bit_index) & 1u8 != 0u8 {
-                    new_tex_data.push(color as u8);
-                    new_tex_data.push((color >> 8) as u8);
-                    new_tex_data.push((color >> 16) as u8);
-                    new_tex_data.push((color >> 24) as u8);
+                    append_u32(&mut new_tex_data, color);
                 } else {
                     append_u32(&mut new_tex_data, 0);
                 }
