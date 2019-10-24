@@ -1,6 +1,8 @@
 use std::fmt::{Display, Formatter};
 use std::string::ToString;
 
+pub type IResult<T> = Result<T, Error>;
+
 #[derive(Debug)]
 pub enum Error {
     Graphics(String),
@@ -28,6 +30,8 @@ pub enum Error {
         func_name: String,
     },
     InvalidCharacterValue(u32),
+    InvalidScancode(u32),
+    InvalidSpriteIndex(u32)
 }
 
 impl Display for Error {
@@ -76,9 +80,17 @@ impl Display for Error {
                 got
             ),
             ArgumentMismatch {
-                expected, got, func_name
-            } => write!(f, "function `{}` expects {} arguments but {} were supplied", func_name, expected, got),
-            InvalidCharacterValue(c) => write!(f, "invalid character value 0x{:X}", c)
+                expected,
+                got,
+                func_name,
+            } => write!(
+                f,
+                "function `{}` expects {} arguments but {} were supplied",
+                func_name, expected, got
+            ),
+            InvalidCharacterValue(c) => write!(f, "invalid character value 0x{:X}", c),
+            InvalidScancode(s) => write!(f, "invalid scancode: {}", s),
+            InvalidSpriteIndex(i) => write!(f, "invalid sprite index: {}", i),
         }
     }
 }

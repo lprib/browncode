@@ -1,19 +1,15 @@
 //! The interpreter that runs IntermediateLine IR
 
-use self::error::Error;
 use self::state::InterpreterState;
+use crate::error::{Error, IResult};
 use crate::graphics::{Graphics, Sprites};
 use crate::intermediate_repr::{IntermediateBlock, IntermediateBlockSlice, IntermediateLine};
 
 use std::borrow::Cow;
 use std::collections::HashMap;
 
-mod error;
 mod intrinsics;
 mod state;
-
-/// Used for results within the interpreter, which all use E: interpreter::error::Error
-type IResult<T> = Result<T, Error>;
 
 /// The immutable program data that is run by the interpreter
 pub struct Program<'a> {
@@ -27,7 +23,7 @@ pub struct Program<'a> {
 
 pub fn execute<'a>(program: &Program<'a>) -> IResult<()> {
     // TODO take ownership of program so clones are not needed?
-    let graphics = Graphics::try_new().map_err(Error::Graphics)?;
+    let graphics = Graphics::try_new()?;
     let sprite_creator = &graphics.get_sprite_creator();
     let sprites = Sprites::new(&sprite_creator);
 

@@ -4,6 +4,7 @@
 mod grammar;
 
 mod ast;
+mod error;
 mod graphics;
 mod intermediate_repr;
 mod interpreter;

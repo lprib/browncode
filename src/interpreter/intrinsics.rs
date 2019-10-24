@@ -1,6 +1,7 @@
 //! intrinsic functions (standard library)
 
-use super::{error::Error, IResult, InterpreterState};
+use super::InterpreterState;
+use crate::error::{Error, IResult};
 use lazy_static::lazy_static;
 use rand::Rng;
 use std::char;
@@ -135,19 +136,19 @@ lazy_static! {
             Ok(0)
         }),
         intrinsic!(pixel, [2], (args, state) => {
-            state.graphics.pixel(args[0], args[1]);
+            state.graphics.pixel(args[0], args[1])?;
             Ok(0)
         }),
         intrinsic!(fillrect, [4], (args, state) => {
-            state.graphics.fill_rect(args[0], args[1], args[2], args[3]);
+            state.graphics.fill_rect(args[0], args[1], args[2], args[3])?;
             Ok(0)
         }),
         intrinsic!(line, [4], (args, state) => {
-            state.graphics.line(args[0], args[1], args[2], args[3]);
+            state.graphics.line(args[0], args[1], args[2], args[3])?;
             Ok(0)
         }),
         intrinsic!(keypressed, [1], (args, state) => {
-            Ok(if state.graphics.is_key_pressed(args[0]) {
+            Ok(if state.graphics.is_key_pressed(args[0])? {
                 1
             } else {
                 0
@@ -183,12 +184,12 @@ lazy_static! {
 
             // bounds check has already happened, so we can use get_unchecked
             let sprite_data = unsafe { &state.data.get_unchecked(data_start_index..data_end_index) };
-            Ok(state.sprites.create_sprite_mono(sprite_data, w, h, color))
+            Ok(state.sprites.create_sprite_mono(sprite_data, w, h, color)?)
         }),
         intrinsic!(sprite, [3], (args, state) => {
             state
                 .graphics
-                .sprite(&state.sprites, args[0], args[1], args[2]);
+                .sprite(&state.sprites, args[0], args[1], args[2])?;
             Ok(0)
         })
     ];

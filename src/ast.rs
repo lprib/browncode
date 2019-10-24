@@ -37,12 +37,12 @@ pub enum Expr<'a> {
 pub struct LineData<'a> {
     /// The character index into the input string that this line starts on
     pub start_index: usize,
-    pub line: Line<'a>
+    pub line: Line<'a>,
 }
 
 impl<'a> From<(usize, Line<'a>)> for LineData<'a> {
     fn from((start_index, line): (usize, Line<'a>)) -> LineData {
-        LineData{ start_index, line }
+        LineData { start_index, line }
     }
 }
 
@@ -67,7 +67,7 @@ pub enum Line<'a> {
 pub enum AssignTarget<'a> {
     Var(&'a str),
     Addr(Expr<'a>),
-    ByteAddr(Expr<'a>)
+    ByteAddr(Expr<'a>),
 }
 
 #[derive(Debug)]

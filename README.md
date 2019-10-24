@@ -26,7 +26,7 @@ Syntax | Description
 `label:` | `label` points to the following byte index into the data
 `zeros 5` | Insert 5 zeros
 `{05FF}` | Insert the bytes 0x05 and 0xFF
-`{HEX}` | Insert a byte for every 2 hex characters (must be an even number of characters)
+`{HEX}` | Insert a byte for every 2 hex characters (must be an even number of characters). This is **bytewise**, so keep in mind {12345678} will be seen as 0x78563412 when read as big endian.
 `230.` | Insert the unsigned decimal byte 230
 `503282` | Insert the unsigned 32 bit number 503282, little endian
 `0xFFEA` | Insert the unsigned 32 bit hex number, little endian

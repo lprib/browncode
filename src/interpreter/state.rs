@@ -1,6 +1,6 @@
 //! The InterpreterState struct handles most of the moving parts of the interpreter.
 
-use super::error::Error;
+use crate::error::Error;
 use super::intrinsics::try_execute_intrinsic;
 use super::{IResult, Program};
 use crate::ast::{AssignTarget, Expr};

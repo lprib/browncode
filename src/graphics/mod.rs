@@ -8,6 +8,7 @@ use sdl2::render::{BlendMode, Canvas, Texture, TextureCreator, TextureQuery};
 use sdl2::video::{Window, WindowContext};
 use sdl2::{EventPump, TimerSubsystem};
 
+use crate::error::{Error, IResult};
 use crate::util::append_u32;
 
 //in pixels (defined by PIX_SIZE)
@@ -38,18 +39,23 @@ pub struct Sprites<'a> {
 impl Graphics {
     /// Attempts to make a new graphics object.
     /// Calling this will create the window and display it
-    pub fn try_new() -> Result<Self, String> {
-        let sdl = sdl2::init()?;
-        let video = sdl.video()?;
+    pub fn try_new() -> IResult<Self> {
+        let sdl = sdl2::init().convert_error()?;
+        let video = sdl.video().convert_error()?;
         let window = video
             .window("Title", SCREEN_WIDTH * PIX_SIZE, SCREEN_HEIGHT * PIX_SIZE)
             .position_centered()
             .build()
-            .map_err(|e| e.to_string())?;
-        let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
-        canvas.set_scale(PIX_SIZE as f32, PIX_SIZE as f32)?;
-        let event_pump = sdl.event_pump()?;
-        let timer = sdl.timer()?;
+            .map_err(|e| Error::Graphics(e.to_string()))?;
+        let mut canvas = window
+            .into_canvas()
+            .build()
+            .map_err(|e| Error::Graphics(e.to_string()))?;
+        canvas
+            .set_scale(PIX_SIZE as f32, PIX_SIZE as f32)
+            .convert_error()?;
+        let event_pump = sdl.event_pump().convert_error()?;
+        let timer = sdl.timer().convert_error()?;
 
         canvas.set_blend_mode(BlendMode::Blend);
         canvas.set_draw_color((0, 0, 0, 0));
@@ -72,14 +78,14 @@ impl Graphics {
         self.canvas.set_draw_color(to_color(color));
     }
 
-    pub fn pixel(&mut self, x: u32, y: u32) {
-        self.canvas.draw_point((x as i32, y as i32)).unwrap();
+    pub fn pixel(&mut self, x: u32, y: u32) -> IResult<()> {
+        self.canvas.draw_point((x as i32, y as i32)).convert_error()
     }
 
-    pub fn fill_rect(&mut self, x: u32, y: u32, w: u32, h: u32) {
+    pub fn fill_rect(&mut self, x: u32, y: u32, w: u32, h: u32) -> IResult<()> {
         self.canvas
             .fill_rect(Rect::new(x as i32, y as i32, w, h))
-            .unwrap();
+            .convert_error()
     }
 
     pub fn poll_exit(&mut self) {
@@ -98,18 +104,26 @@ impl Graphics {
         self.canvas.clear();
     }
 
-    pub fn is_key_pressed(&self, scancode: u32) -> bool {
-        self.event_pump
+    pub fn is_key_pressed(&self, scancode: u32) -> IResult<bool> {
+        let scancode =
+            Scancode::from_i32(scancode as i32).ok_or(Error::InvalidScancode(scancode))?;
+
+        Ok(self
+            .event_pump
             .keyboard_state()
-            .is_scancode_pressed(Scancode::from_i32(scancode as i32).expect("not a valid scancode"))
+            .is_scancode_pressed(scancode))
     }
 
-    pub fn sprite(&mut self, sprites: &Sprites, sprite_index: u32, x: u32, y: u32) {
+    pub fn sprite(&mut self, sprites: &Sprites, sprite_index: u32, x: u32, y: u32) -> IResult<()> {
+        if sprite_index as usize >= sprites.textures.len() {
+            return Err(Error::InvalidSpriteIndex(sprite_index));
+        }
+        
         let tex = &sprites.textures[sprite_index as usize];
         let TextureQuery { width, height, .. } = tex.query();
         self.canvas
             .copy(tex, None, Rect::new(x as i32, y as i32, width, height))
-            .unwrap();
+            .convert_error()
     }
 
     pub fn get_sprite_creator(&self) -> SpriteCreator {
@@ -117,7 +131,7 @@ impl Graphics {
     }
 
     /// Uses Bresenham's line algorithm
-    pub fn line(&mut self, x0: u32, y0: u32, x1: u32, y1: u32) {
+    pub fn line(&mut self, x0: u32, y0: u32, x1: u32, y1: u32) -> IResult<()> {
         let mut x0 = x0 as i32;
         let mut y0 = y0 as i32;
         let x1 = x1 as i32;
@@ -129,7 +143,7 @@ impl Graphics {
         let step_y = if y0 < y1 { 1 } else { -1 };
         let mut error = dx + dy;
         loop {
-            self.pixel(x0 as u32, y0 as u32);
+            self.pixel(x0 as u32, y0 as u32)?;
             if x0 == x1 && y0 == y1 {
                 break;
             }
@@ -143,6 +157,7 @@ impl Graphics {
                 y0 += step_y;
             }
         }
+        Ok(())
     }
 }
 
@@ -158,12 +173,19 @@ impl<'a> Sprites<'a> {
     /// Returns the index of the sprite
     /// (which can be used to identify the sprite when using it in Graphics).
     /// w MUST be a multiple of 8 (TODO assert)
-    pub fn create_sprite_mono(&mut self, data: &[u8], w: u32, h: u32, color: u32) -> u32 {
+    pub fn create_sprite_mono(&mut self, data: &[u8], w: u32, h: u32, color: u32) -> IResult<u32> {
+        if w % 8 != 0 {
+            return Err(Error::Graphics(format!(
+                "sprite width must be a multiple of 8. {} supplied",
+                w
+            )));
+        }
+
         let mut tex = self
             .sprite_creator
             .0
             .create_texture_static(PIXEL_FORMAT, w, h)
-            .unwrap();
+            .map_err(|e| Error::Graphics(e.to_string()))?;
         tex.set_blend_mode(BlendMode::Blend);
         let mut new_tex_data = Vec::new();
         for byte in data {
@@ -176,10 +198,11 @@ impl<'a> Sprites<'a> {
             }
         }
         // the pitch (in bytes) is w * 4 because there are 4 bytes (RGBA8888) per pixel
-        tex.update(None, &new_tex_data, (w * 4) as usize).unwrap();
+        tex.update(None, &new_tex_data, (w * 4) as usize)
+            .map_err(|e| Error::Graphics(e.to_string()))?;
         self.textures.push(tex);
 
-        (self.textures.len() - 1) as u32
+        Ok((self.textures.len() - 1) as u32)
     }
 }
 
@@ -188,4 +211,15 @@ fn to_color(n: u32) -> Color {
     let pixel_format =
         unsafe { PixelFormat::from_ll(sdl2::sys::SDL_AllocFormat(PIXEL_FORMAT as u32)) };
     Color::from_u32(&pixel_format, n)
+}
+
+/// Trait for converting something to an Error::Graphics(_)
+pub trait ToGraphicsError<T> {
+    fn convert_error(self) -> IResult<T>;
+}
+
+impl<T> ToGraphicsError<T> for Result<T, String> {
+    fn convert_error(self) -> IResult<T> {
+        self.map_err(Error::Graphics)
+    }
 }
