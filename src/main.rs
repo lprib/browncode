@@ -41,7 +41,7 @@ fn main() -> Result<(), String> {
 
     let program =
         read_to_string(opt.input_file).map_err(|_| String::from("Could not read file"))?;
-    let (data, ast) = grammar::program(&program).map_err(|e| e.to_string())?;
+    let (data_ast, ast) = grammar::program(&program).map_err(|e| e.to_string())?;
     match opt.output_type {
         OutputType::Ast => {
             println!("{:?}", ast);
@@ -54,7 +54,7 @@ fn main() -> Result<(), String> {
         }
 
         OutputType::DataAst => {
-            println!("{:#?}", data);
+            println!("{:#?}", data_ast);
             Ok(())
         }
 
@@ -66,14 +66,8 @@ fn main() -> Result<(), String> {
 
         OutputType::Run => {
             let ir = intermediate_repr::to_intermediate_repr(ast);
-            let (data, data_label_table) = intermediate_repr::convert_data_segment(data);
-            let label_table = interpreter::build_label_table(&ir).map_err(|e| e.to_string())?;
-            let program = interpreter::Program {
-                ir,
-                data,
-                data_label_table,
-                label_table,
-            };
+            let data_segment = intermediate_repr::convert_data_segment(data_ast);
+            let program = interpreter::Program::try_new(ir, data_segment).map_err(|e| e.to_string())?;
 
             interpreter::execute(&program).map_err(|e| e.to_string())?;
             Ok(())

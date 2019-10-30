@@ -25,7 +25,7 @@ pub struct InterpreterState<'a> {
 impl<'a> InterpreterState<'a> {
     /// Execute a single line based on the current state (instr pointer)
     ///
-    /// Note, this may actually execute several lines because function calls
+    /// Note, this may actually execute several lines (recursively) because function calls
     /// in the current line will jump to the function definition and fully execute
     /// before returning to the current line.
     pub fn execute_line(&mut self, program: &Program<'a>) -> IResult<()> {
@@ -37,8 +37,7 @@ impl<'a> InterpreterState<'a> {
                 let value_to_assign = self.evaluate_expr(expr, program)?;
                 match target {
                     AssignTarget::Var(name) => {
-                        let store_address = self.get_var_address(name);
-                        self.set_memory_u32(store_address, value_to_assign)?;
+                        self.set_var_value(name, value_to_assign)?;
                     }
                     AssignTarget::Addr(addr) => {
                         let store_address = self.evaluate_expr(addr, program)?;
@@ -67,7 +66,7 @@ impl<'a> InterpreterState<'a> {
             }
 
             // Ignore labels, function decls, and function returns
-            // Note, this means that execution can fall through into functions (TODO intended?)
+            // Note, this means that execution can fall through into functions
             Label(..) | FunDeclaration(..) | FunReturn => {}
             Goto(name) => {
                 self.instr_index = *program
@@ -188,9 +187,11 @@ impl<'a> InterpreterState<'a> {
                 .get(name)
                 .ok_or_else(|| Error::FunctionNotFound(name.to_string()))?;
 
+            // Make sure the jump destination is a FunDeclaration
             if let IntermediateLine::FunDeclaration(_, params, is_savearg) =
                 &program.ir[self.instr_index]
             {
+                // Check number of arguments match
                 if params.len() != args.len() {
                     return Err(Error::ArgumentMismatch {
                         expected: params.len(),
@@ -199,18 +200,19 @@ impl<'a> InterpreterState<'a> {
                     });
                 }
 
+                // cache args if savearg func
                 let saved_args = if *is_savearg {
                     Some(self.save_func_params(params)?)
                 } else {
                     None
                 };
 
+                // Copy input to function to the paramater var names
                 for (index, param) in params.iter().enumerate() {
-                    let addr = self.get_var_address(param);
-                    let arg_value = args[index];
-                    self.set_memory_u32(addr, arg_value)?;
+                    self.set_var_value(param, args[index])?;
                 }
-
+                
+                // Execute all lines of fucntion
                 loop {
                     if let IntermediateLine::FunReturn = program.ir[self.instr_index] {
                         break;
@@ -218,6 +220,7 @@ impl<'a> InterpreterState<'a> {
                     self.execute_line(program)?;
                 }
 
+                // Restore original parameter variable values from before the function call
                 if let Some(saved_args) = saved_args {
                     self.restore_func_params(&saved_args)?
                 };
@@ -294,6 +297,14 @@ impl<'a> InterpreterState<'a> {
         self.get_memory_u32(addr)
     }
 
+    /// Sets the var of name to the specified value. As with get_var_address,
+    /// it allocates space for the var if the name does not already exist
+    fn set_var_value(&mut self, name: &'a str, value: u32) -> IResult<()> {
+        let addr = self.get_var_address(name);
+        self.set_memory_u32(addr, value)?;
+        Ok(())
+    }
+
     /// Returns the address in memory (data vec) that a var points to.
     /// If the var does not already exist, append a slot to memory and point the var's name to the new slot
     fn get_var_address(&mut self, name: &'a str) -> usize {
@@ -325,8 +336,7 @@ impl<'a> InterpreterState<'a> {
     /// For all the specivied var names and values in saved_params, restore the specified name to the specified value
     fn restore_func_params(&mut self, saved_params: &[(&'a str, u32)]) -> IResult<()> {
         for (var_name, value) in saved_params {
-            let addr = self.get_var_address(var_name);
-            self.set_memory_u32(addr, *value)?;
+            self.set_var_value(var_name, *value)?;
         }
         Ok(())
     }

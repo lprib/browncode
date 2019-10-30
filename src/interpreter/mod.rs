@@ -3,7 +3,7 @@
 use self::state::InterpreterState;
 use crate::error::{Error, IResult};
 use crate::graphics::{Graphics, Sprites};
-use crate::intermediate_repr::{IntermediateBlock, IntermediateBlockSlice, IntermediateLine};
+use crate::intermediate_repr::{IntermediateBlock, IntermediateBlockSlice, IntermediateLine, DataSegment};
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -13,12 +13,24 @@ mod state;
 
 /// The immutable program data that is run by the interpreter
 pub struct Program<'a> {
-    pub ir: IntermediateBlock<'a>,
-    pub data: Vec<u8>,
+    ir: IntermediateBlock<'a>,
+    data: Vec<u8>,
     /// Maps labels to the line that they point to in code
-    pub label_table: HashMap<Cow<'a, str>, usize>,
+    label_table: HashMap<Cow<'a, str>, usize>,
     /// Maps data labels to the byte in data they point to
-    pub data_label_table: HashMap<&'a str, usize>,
+    data_label_table: HashMap<&'a str, usize>,
+}
+
+impl<'a> Program<'a> {
+    pub fn try_new(ir: IntermediateBlock<'a>, data_segment: DataSegment<'a>) -> IResult<Self> {
+        let label_table = build_label_table(&ir)?;
+        Ok(Program {
+            ir,
+            data: data_segment.0,
+            label_table,
+            data_label_table: data_segment.1
+        })
+    }
 }
 
 pub fn execute<'a>(program: &Program<'a>) -> IResult<()> {
@@ -28,7 +40,7 @@ pub fn execute<'a>(program: &Program<'a>) -> IResult<()> {
     let sprites = Sprites::new(&sprite_creator);
 
     let mut state = InterpreterState {
-        // copy user defined data into a mutable vec
+        // clone user defined data into a mutable vec
         data: program.data.clone(),
         var_table: program.data_label_table.clone(),
         instr_index: 0,

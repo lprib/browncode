@@ -109,7 +109,6 @@ lazy_static! {
             flush_stdout()?;
             Ok(0)
         }),
-        //TODO println for strings
         intrinsic!(printchar, [1], (args, _) => {
             print!("{}", char::from_u32(args[0]).ok_or(Error::InvalidCharacterValue(args[0]))?);
             flush_stdout()?;

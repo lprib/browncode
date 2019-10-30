@@ -11,7 +11,7 @@ pub type IntermediateBlock<'a> = Vec<IntermediateLine<'a>>;
 pub type IntermediateBlockSlice<'a> = [IntermediateLine<'a>];
 
 /// Vec of data paired with a map from labels to their index in the data
-pub type DataSegment<'a> = (Vec<u8>, HashMap<&'a str, usize>);
+pub struct DataSegment<'a>(pub Vec<u8>, pub HashMap<&'a str, usize>);
 
 /// Intermediate AST line
 pub enum IntermediateLine<'a> {
@@ -149,7 +149,7 @@ pub fn convert_data_segment(data: DataBlock<'_>) -> DataSegment<'_> {
         }
     }
 
-    (data_vec, map)
+    DataSegment(data_vec, map)
 }
 
 impl fmt::Display for IntermediateLine<'_> {
