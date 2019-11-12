@@ -9,6 +9,7 @@ Main ideas:
 - Even variables defined in the code are appended to the `.DATA` section when they are encountered by the interpreter for the first time.
 - All data is accessed through labels and offsets (variables are just labels in the data section)
 - All variables are global (mostly... see `savearg` function modifier).
+- Any data structures are done through pointer arithmetic.
 
 
 ## Syntax
