@@ -11,6 +11,25 @@ Main ideas:
 - All variables are global (mostly... see `savearg` function modifier).
 - Any data structures are done through pointer arithmetic.
 
+## CLI
+```
+brown 0.3.0
+Liam Pribis
+
+USAGE:
+    browncode [OPTIONS] <input-file>
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+OPTIONS:
+    -t, --output-type <output-type>     [default: run]  [possible values: Ast, PrettyAst, DataAst, Ir, Run]
+
+ARGS:
+    <input-file>
+```
+
 
 ## Syntax
 Program is split into `.DATA` and `.CODE` segments. `.DATA` can only contain data definitions, `.CODE` can only contain code.
